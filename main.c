@@ -239,7 +239,7 @@ void node_add(Node *node, const int value, const int pos) {
 
     //write the new node
     temp[pos].val = value;
-    temp[pos].index = ++currIndex;
+    temp[pos].index = currIndex++;
     temp[pos].numChildren = 0;
 
     //copy the rest of the children into the new array
@@ -286,8 +286,14 @@ int dict_add(Node *head, const int *value, const int valuec) {
         }
     }
 
-    printf("Invalid dictionary value\n");
-    return -1;
+    if(valuec == 1) {
+        //the new value is the biggest of the children
+        node_add(head, value[0], head->numChildren);
+        return head->index;
+    }else{
+        printf("Invalid dictionary value\n");
+        return -1;
+    }
 }
 
 /**
@@ -326,7 +332,40 @@ void dict_free(Node *head) {
 }
 
 int main(int argc, char *argv[]) {
-    Gif gif;
+    //TODO: More test cases?
+    Node dict;
+    dict_init(&dict, 4);
+    int value[4] = {1, 2, 3, 4};
+    printf("added %x\n", dict_add(&dict, value, 2)); //correct
+    printf("added %x\n", dict_add(&dict, value, 3)); //correct
+    printf("added %x\n", dict_add(&dict, value, 4)); //correct
+
+    value[1] = 1;
+    printf("added %x\n", dict_add(&dict, value, 2)); //correct
+
+    value[1] = 4;
+    printf("added %x\n", dict_add(&dict, value, 2)); //fails "Invalid..."
+
+    value[1] = 3;
+    printf("added %x\n", dict_add(&dict, value, 2)); //fails "Invalid..."
+
+    printf("%d\n", dict_contains(&dict, value, 4)); //correct
+    value[1] = 1;
+    printf("%d\n", dict_contains(&dict, value, 2)); //correct
+    value[1] = 2;
+    printf("%d\n", dict_contains(&dict, value, 2)); //correct
+    value[1] = 3;
+    printf("%d\n", dict_contains(&dict, value, 2)); //correct, the add failed
+    value[1] = 4;
+    printf("%d\n", dict_contains(&dict, value, 2)); //correct, the add failed
+    value[1] = 2;
+    printf("%d\n", dict_contains(&dict, value, 3)); //correct
+    printf("%d\n", dict_contains(&dict, value, 4)); //correct
+
+
+    dict_free(&dict);
+
+    /*Gif gif;
     fillGifHeader(&gif);
     gif.colorTable = COLOR_TABLE;
 
@@ -346,7 +385,7 @@ int main(int argc, char *argv[]) {
     writeToFile(&gif, "./out.gif");
 
     freeImageData(image[0].imageData, image[0].numBlocks);
-    freeImageData(image[1].imageData, image[1].numBlocks);
+    freeImageData(image[1].imageData, image[1].numBlocks);*/
 
     return 0;
 }
