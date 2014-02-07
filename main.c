@@ -16,14 +16,23 @@
 #define WIDTH  250
 #define HEIGHT 250
 #define FPS    10
-#define REPEAT_TIMES 0xffff //gifs don't repeat forever
+//gifs don't repeat forever
+#define REPEAT_TIMES 0xffff
+//actual size = 2^(TABLE_SIZE + 1)
+#define TABLE_SIZE 1
 
-static const char TABLE_SIZE = 1; //actual size = 2^(TABLE_SIZE + 1)
-static const char COLOR_TABLE[12] = {
+static const char COLOR_TABLE[(1 << (TABLE_SIZE + 1))*3] = {
     0x00, 0x00, 0x00, //black
     0xFF, 0xFF, 0xFF, //white
     0xFF, 0xAA, 0x00, //orange
     0x00, 0x00, 0x00};//black, unused
+
+//********** change only constants above here *********
+
+//Initial block size for LZW (which I'm subverting to make an uncompressed gif)
+#define CODE_SIZE 7
+//2^n and 2^n + 1 are taken
+#define LZW_FIRST_INDEX (1 << CODE_SIZE) + 2
 
 //Can't have the \0, so I have to initialize as actual char arrays
 static const char SIGNATURE[3] = {'G', 'I', 'F'};
@@ -32,7 +41,6 @@ static const char INTRODUCER = 0x21; //extension introducer
 static const char GCE_LABEL = 0xF9;  //Graphic Control Extension label
 static const char SEPARATOR = 0x2C;  //image block separator
 static const short TRAILER = 0x3B00; //End of block + gif trialer (little endian)
-static const char CODE_SIZE = 7;     //Initial block size for LZW (which I'm subverting to make an uncompressed gif)
 static const unsigned char BLOCK_SIZE = 127; //2^LZWCodeSize - 1
 static const char REPEAT_HEADER_SIZE = 19;
 static const char REPEAT_HEADER[19] = {
@@ -200,6 +208,95 @@ void freeImageData(DataBlock *blocks, size_t size) {
     }
 
     free(blocks);
+}
+
+
+typedef struct NodeT {
+    int val, index;
+    size_t numChildren;
+    struct NodeT *children;
+} Node;
+
+Node *dict_init(Node *head, int numColors) {
+    head->val = result->index = -1;
+    head->numChildren = numColors;
+    head->children = malloc(sizeof(Node)*numColors);
+
+    int i;
+    for(i = 0; i < numColors; i++) {
+        head->children[i].val = result->children[i].index = i;
+        head->children[i].numChildren = 0;
+    }
+}
+
+/**
+ * Adds a new node to the dictionary and returns the code to output when using
+ * LZW
+ *
+ * @param head the dictionary to process
+ * @param value the array of values that represents the address into the
+ * dictionary to add
+ * @return the index of the node above the new value (the LZW code to output)
+ */
+int dict_add(Node *head, const int *value, const int valuec) {
+    //this is the first value I can use in GIF LZW
+    static int currIndex = LZW_FIRST_INDEX;
+
+    int i;
+    for(i = 0; i < head->numChildren; i++) {
+        if(value[0] == head->children[i].val) {
+            if(valuec == 1) { //the child already exists
+                return head->index;
+            }else{ //we have to go deeper
+                return dict_add(&head->children[i], value + 1, valuec - 1);
+            }
+        }else if(value[0] > head->children[i].val) { //val is not a child of head
+            if(valuec == 1) { //add the node as head's child
+                Node *temp = malloc(sizeof(Node)*(head->numChildren + 1));
+                //copy all of the nodes with a value less than this one
+                memcpy(temp, head->children, sizeof(Node)*(i+1));
+
+                //write the new node
+                head->children[i+1].val = value[0];
+                head->children[i+1].index = ++currIndex;
+                head->children[i+1].numChildren = 0;
+
+                //copy the rest of the children into the new array
+                memcpy(temp+i+2, head->children+i+1,
+                        sizeof(Node)*(head->numChildren - i - 1));
+
+                free(head->children);
+                head->children = temp;
+                head->numChildren++;
+
+                return head->index;
+            }else{
+                //technically I could handle this case but it won't happen in LZW
+                break;
+            }
+        }
+    }
+
+    printf("Invalid dictionary value\n");
+    return -1;
+}
+
+/**
+ * @return 1 if the dictionary contains the value 0 otherwise
+ */
+int dict_contains(Node *head, int *value, int valuec) {
+    
+}
+
+void dict_free(Node *head) {
+    int i;
+    for(int i = 0; i < head->numChildren; i++) {
+       if(head->children[i].numChildren > 0) {
+            dict_free(&head->children[i]);
+       }
+    }
+
+    free(head->children);
 }
 
 int main(int argc, char *argv[]) {
