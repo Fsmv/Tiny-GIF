@@ -80,10 +80,15 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
         charIndex++;
     }
 
-    free(currSym);
+    setChar((char**)&currSym, &symLen, symIndex, '\0');
+    setCode(&result, &resultLen, resultIndex, dict_add(&head, currSym, symIndex+1));
+    resultIndex++;
 
     *code = result;
     *codec = resultIndex;
+
+    free(currSym);
+    dict_free(&head);
 }
 
 /**
@@ -96,6 +101,15 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
  * @param string pointer to store a new string in
  */
 void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
+    Node head;
+    dict_init(&head);
+
+    int i;
+    for(i = 0; i < codec; i++) {
+        
+    }
+
+    dict_free(&head);
 }
 
 /**
