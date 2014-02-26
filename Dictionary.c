@@ -93,6 +93,43 @@ int dict_contains(const Node *head, const uint8_t *value, const size_t valuec) {
     return 0;
 }
 
+int dict_search(const Node *head, const uint16_t index, uint8_t **code, size_t *codec) {
+    if(head->numChildren <= 0) {
+        return 0;
+    }
+
+    if(*code == NULL) {
+        *code = malloc(sizeof(uint8_t) * 1);
+        *codec = 1;
+    }
+
+    //depth first search
+    int i;
+    for(i = 0; i < head->numChildren; i++) {
+        if(head->children[i].index == index) {
+            //index found, each layer above will prepend its value
+            (*code)[0] = head->children[i].val;
+            return 1;
+        }else if(head->children[i].index >= index) {
+            return 0; //indexes happen in sequential order
+        }else{
+            if(dict_search(&(head->children[i]), index, code, codec)) {
+                //it was found, on the way up from the recursion prepend this
+                //child's value
+
+                (*codec)++;
+                uint8_t *result = malloc(sizeof(uint8_t) * (*codec));
+                memcpy(result+1, *code, *codec - 1);
+
+                free(*code);
+                *code = result;
+            }
+        }
+    }
+
+    return 0;
+}
+
 void dict_free(Node *head) {
     int i;
     for(i = 0; i < head->numChildren; i++) {

@@ -61,6 +61,7 @@ extern int dict_contains(const Node *head, const uint8_t *code, const size_t cod
  * @param index the index to search for
  * @param code the result code phrase
  * @param codec the result code phrase length
+ * @return 1 if the index was found, 0 otherwise
  */
 extern int dict_search(const Node *head, const uint16_t index, uint8_t **code, size_t *codec);
 
