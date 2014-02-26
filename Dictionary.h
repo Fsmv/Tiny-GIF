@@ -53,6 +53,18 @@ extern uint16_t dict_add(Node *head, const uint8_t *code, const size_t codec);
 extern int dict_contains(const Node *head, const uint8_t *code, const size_t codec);
 
 /**
+ * Finds the code phrase that leads to the index
+ *
+ * Code will be dynamically allocated
+ *
+ * @param head tree to search
+ * @param index the index to search for
+ * @param code the result code phrase
+ * @param codec the result code phrase length
+ */
+extern int dict_search(const Node *head, const uint16_t index, uint8_t **code, size_t *codec);
+
+/**
  * Adds a code as a child of the specified node at the specified index
  *
  * @param node the node to add to

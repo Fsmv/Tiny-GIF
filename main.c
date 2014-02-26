@@ -104,10 +104,44 @@ void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
     Node head;
     dict_init(&head);
 
+    size_t symLen = 16;
+    uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);
+    size_t symIndex = 0;
+
+    size_t resultLen = 32;
+    char *result = malloc(sizeof(char) * resultLen);
+    size_t resultIndex = 0;
+
     int i;
     for(i = 0; i < codec; i++) {
-        
+        uint8_t *phrase;
+        size_t phraseLen;
+
+        if(dict_search(&head, code[i], &phrase, &phraseLen)) {
+            resultIndex += phraseLen;
+            setChar(&result, &resultLen, resultIndex, '\0');
+            memcpy(result + resultIndex - phraseLen, phrase, phraseLen);
+
+            setChar((char **) &currSym, &symLen, symIndex, phrase[0]);
+            dict_add(&head, currSym, symIndex);
+
+            free(currSym);
+            currSym = phrase;
+            symLen = symIndex = phraseLen;
+        }else{
+            setChar((char **)&currSym, &symLen, symIndex, currSym[0]);
+            symIndex++;
+
+            resultIndex += symIndex;
+            setChar(&result, &resultLen, resultIndex, '\0');
+            memcpy(result + resultIndex - symIndex, currSym, symIndex);
+
+            dict_add(&head, currSym, symIndex);
+            free(phrase);
+        }
     }
+
+    *string = result;
 
     dict_free(&head);
 }
