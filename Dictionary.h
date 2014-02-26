@@ -40,7 +40,7 @@ extern void dict_free(Node *head);
  * @param codec the size of the code array
  * @return the index of the node above the new value (the LZW code to output)
  */
-extern int dict_add(Node *head, const uint8_t *code, const size_t codec);
+extern uint16_t dict_add(Node *head, const uint8_t *code, const size_t codec);
 
 /**
  * Determines if a code string is in the dictionary or not

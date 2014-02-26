@@ -37,7 +37,7 @@ void node_add(Node *node, const uint8_t value, const uint8_t pos) {
     node->numChildren++;
 }
 
-int dict_add(Node *head, const uint8_t *value, const size_t valuec) {
+uint16_t dict_add(Node *head, const uint8_t *value, const size_t valuec) {
     if(head->numChildren == 0 && valuec == 1) {
         node_add(head, value[0], 0);
         return head->index;
