@@ -1,7 +1,48 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "Dictionary.h"
+
+/**
+ * Appends the element to the array extending it if necessary
+ *
+ * @param arr array to append to
+ * @param size size of the array currently
+ * @param index position to add to
+ * @param code element to add
+ */
+void setCode(uint16_t **arr, size_t *size, size_t index, const uint16_t code) {
+    if(index >= *size) {
+        uint16_t *temp = malloc(sizeof(uint16_t) * 2 * index);
+        memcpy(temp, *arr, *size * sizeof(uint16_t));
+        free(*arr);
+        *size = 2 * index;
+        *arr = temp;
+    }
+
+    (*arr)[index] = code;
+}
+
+/**
+ * Appends the element to the array extending it if necessary
+ *
+ * @param arr array to append to
+ * @param size size of the array currently
+ * @param index position to add to
+ * @param ch element to add
+ */
+void setChar(char **arr, size_t *size, size_t index, const char ch) {
+    if(index >= *size) {
+        char *temp = malloc(sizeof(char) * 2 * index);
+        memcpy(temp, *arr, *size * sizeof(char));
+        free(*arr);
+        *size = 2 * index;
+        *arr = temp;
+    }
+
+    (*arr)[index] = ch;
+}
 
 /**
  * Compresses a string with the LZW algorithm
@@ -16,26 +57,30 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
     Node head;
     dict_init(&head);
 
-    uint16_t *result = malloc(sizeof(uint16_t) * 50);
+    size_t resultLen = 64;
+    uint16_t *result = malloc(sizeof(uint16_t) * resultLen);
     size_t resultIndex = 0;
 
-    uint8_t currSym[10];
-    size_t symLen = 0;
+    size_t symLen = 16;
+    uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);
+    size_t symIndex = 0;
     size_t charIndex = 0;
     while(string[charIndex] != '\0') {
-        currSym[symLen] = string[charIndex];
-        symLen++;
+        setChar((char**)&currSym, &symLen, symIndex, string[charIndex]);
+        symIndex++;
 
-        if(!dict_contains(&head, currSym, symLen)) {
-            result[resultIndex] = dict_add(&head, currSym, symLen);
+        if(!dict_contains(&head, currSym, symIndex)) {
+            setCode(&result, &resultLen, resultIndex, dict_add(&head, currSym, symIndex));
 
             currSym[0] = string[charIndex];
-            symLen = 1;
+            symIndex = 1;
             resultIndex++;
         }
 
         charIndex++;
     }
+
+    free(currSym);
 
     *code = result;
     *codec = resultIndex;
