@@ -127,12 +127,13 @@ int tree_search(const Node *head, const uint16_t index, uint8_t **code, size_t *
                 //it was found, on the way up from the recursion prepend this
                 //child's value
 
+                (*codec)++;
                 uint8_t *result = malloc(sizeof(uint8_t) * (*codec));
                 memcpy(result+1, *code, *codec - 1);
+                result[0] = head->children[i].val;
 
                 free(*code);
                 *code = result;
-                (*codec)++;
                 return 1;
             }
         }

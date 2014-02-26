@@ -54,8 +54,8 @@ void setChar(char **arr, size_t *size, size_t index, const char ch) {
  * @param codec pointer to the size of the array allocated
  */
 void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
-    Node head;
-    dict_init(&head);
+    Dictionary dict;
+    dict_init(&dict);
 
     size_t resultLen = 64;
     uint16_t *result = malloc(sizeof(uint16_t) * resultLen);
@@ -69,8 +69,8 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
         setChar((char**)&currSym, &symLen, symIndex, string[charIndex]);
         symIndex++;
 
-        if(!dict_contains(&head, currSym, symIndex)) {
-            setCode(&result, &resultLen, resultIndex, dict_add(&head, currSym, symIndex));
+        if(!dict_contains(&dict, currSym, symIndex)) {
+            setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex));
 
             currSym[0] = string[charIndex];
             symIndex = 1;
@@ -81,14 +81,14 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
     }
 
     setChar((char**)&currSym, &symLen, symIndex, '\0');
-    setCode(&result, &resultLen, resultIndex, dict_add(&head, currSym, symIndex+1));
+    setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex+1));
     resultIndex++;
 
     *code = result;
     *codec = resultIndex;
 
     free(currSym);
-    dict_free(&head);
+    dict_free(&dict);
 }
 
 /**
@@ -101,8 +101,8 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
  * @param string pointer to store a new string in
  */
 void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
-    Node head;
-    dict_init(&head);
+    Dictionary dict;
+    dict_init(&dict);
 
     size_t symLen = 16;
     uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);
@@ -114,36 +114,44 @@ void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
 
     int i;
     for(i = 0; i < codec; i++) {
-        uint8_t *phrase;
+        uint8_t *phrase = NULL;
         size_t phraseLen;
 
-        if(dict_search(&head, code[i], &phrase, &phraseLen)) {
+        if(dict_search(&dict, code[i], &phrase, &phraseLen)) {
+            //output phrase
             resultIndex += phraseLen;
             setChar(&result, &resultLen, resultIndex, '\0');
             memcpy(result + resultIndex - phraseLen, phrase, phraseLen);
 
+            //Add currSym + phrase[0] to dictionary
             setChar((char **) &currSym, &symLen, symIndex, phrase[0]);
-            dict_add(&head, currSym, symIndex);
+            if(symIndex > 0) { //if == 0 its already in the dictionary
+                dict_add(&dict, currSym, symIndex+1);
+            }
 
+            //currSym = phrase
             free(currSym);
             currSym = phrase;
             symLen = symIndex = phraseLen;
         }else{
+            //currSym += currSym[0]
             setChar((char **)&currSym, &symLen, symIndex, currSym[0]);
             symIndex++;
 
+            //output currSym
             resultIndex += symIndex;
             setChar(&result, &resultLen, resultIndex, '\0');
             memcpy(result + resultIndex - symIndex, currSym, symIndex);
 
-            dict_add(&head, currSym, symIndex);
-            free(phrase);
+            //add currSym to dictionary
+            dict_add(&dict, currSym, symIndex);
+            free(phrase); //allocated in dict_search
         }
     }
 
     *string = result;
 
-    dict_free(&head);
+    dict_free(&dict);
 }
 
 /**
@@ -169,14 +177,24 @@ int main(int argc, char *argv[]) {
 
     uint16_t *code;
     size_t length;
-    LZW_Compress("abcdefafaaacaa", &code, &length);
+    LZW_Compress("Look at this amazing string I'm compressing. compressing.", &code, &length);
 
     int i;
     for(i = 0; i < length; i++) {
         printf("%x ", code[i]);
     }
 
+    char *out;
+    LZW_Decompress(code, length, &out);
+
+    printf("\n%s", out);
+
+    //printf("\nOriginal Size: %d bytes\nCompressed: %d bytes\n", (int)strlen(out), (int)(2*length));
+
+    free(out);
     free(code);
 
     printf("\nElapsed: %fs\n", (float)(clock() - last) / CLOCKS_PER_SEC);
+
+    return 0;
 }
