@@ -5,7 +5,8 @@
 #include <stddef.h>
 
 static const uint8_t ALPHABET_SIZE = 0xFF;
-static const uint16_t LZW_FIRST_INDEX = 0x100;
+static const uint16_t CLEAR_CODE = 0x100;
+static const uint16_t LZW_FIRST_INDEX = 0x101;
 
 typedef struct NodeT {
     uint8_t val;

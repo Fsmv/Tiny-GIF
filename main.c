@@ -70,8 +70,17 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
         symIndex++;
 
         if(!dict_contains(&dict, currSym, symIndex)) {
+            //If the dictionary does not cantain the symbol, add it
             setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex));
 
+            //if we go over 16 bits reset the dictionary
+            if(dict.currIndex == 0xFFFF) {
+                dict_free(&dict);
+                dict_init(&dict);
+                setCode(&result, &resultLen, resultIndex, CLEAR_CODE);
+            }
+
+            //set the current symbol to last char read
             currSym[0] = string[charIndex];
             symIndex = 1;
             resultIndex++;
@@ -116,6 +125,13 @@ void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
     for(i = 0; i < codec; i++) {
         uint8_t *phrase = NULL;
         size_t phraseLen;
+
+        //If the clear code shows up reset the dictionary
+        if(code[i] == CLEAR_CODE) {
+            dict_free(&dict);
+            dict_init(&dict);
+            continue;
+        }
 
         if(dict_search(&dict, code[i], &phrase, &phraseLen)) {
             //output phrase
@@ -177,7 +193,7 @@ int main(int argc, char *argv[]) {
 
     uint16_t *code;
     size_t length;
-    LZW_Compress("Look at this amazing string I'm compressing. compressing.", &code, &length);
+    LZW_Compress("Test Compression", &code, &length);
 
     int i;
     for(i = 0; i < length; i++) {
