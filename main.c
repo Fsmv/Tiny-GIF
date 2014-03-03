@@ -176,7 +176,8 @@ void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
  * @param infile name of the file to compress
  * @param outfile name of the file to write to
  */
-void compressFile(const char *infile, const char *outfile) {
+void compressFile(const FILE *infile, const FILE *outfile) {
+
 }
 
 /**
@@ -185,22 +186,73 @@ void compressFile(const char *infile, const char *outfile) {
  * @param infile name of the file to decompress
  * @param outfile name of the file to write to
  */
-void decompressFile(const char *infile, const char *outfile) {
+void decompressFile(const FILE *infile, const FILE *outfile) {
+
+}
+
+/**
+ * Prints the help text for this program
+ *
+ * @param name argv[0], the name of the program being run
+ */
+void printHelp(char *name) {
+    printf("Usage %s (options) [file]\n", name);
+    printf("Options:\n");
+    printf("\t-c: Compress file (appends .lzw");
+    printf("\t-d: Decompress file (takes off .lzw or adds .orig)");
+}
+
+/**
+ * Returns an opened file handle to a file name as defined in the help text
+ *
+ * When compressing add .lzw, when decompressing, remove .lzw or add .orig to
+ * infile.
+ *
+ * Will modify infile
+ *
+ * @param infile name to base the outfile name on
+ * @param isCompressing 1 if compressing 0 if decompressing
+ * @return a file handle to the file to output to
+ */
+FILE getOutFile(char *infile, const char isCompressing) {
+    if(isCompressing) {
+        return fopen(strcat(infile, ".lzw"), "w");
+    }else{
+        char *extPos = strrchr(infile, ".lzw");
+        size_t len = strlen(infile);
+
+        //if .lzw did not exist or was not the last 4 chars
+        if(extPos == NULL || extPos != (infile + len - 4)) {
+            return fopen(strcat(infile, ".orig"), "w");
+        }else{
+            //take off the last 4 chars, which are .lzw
+            infile[strlen(infile) - 4] = '\0';
+            return fopen(infile, "w");
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
     clock_t last = clock();
 
+    if(argc <= 1 || argc > 3) {
+        printHelp(argv[0]);
+    }else if(argc == 2) {
+        compressFile(argv[1], getOutFile(argv[1], 1));
+    }else if(argc == 3) {
+        if(strcmp(argv[1], "-c") == 0) {
+            compressFile(argv[2], getOutFile(argv[2], 1));
+        }else if(strcmp(argv[1], "-d") == 0) {
+            decmopressFile(argv[2], getOutFile(argv[2], 0));
+        }else{
+            printHelp(argv[0]);
+        }
+    }
+
     uint16_t *code;
     size_t length;
     LZW_Compress("Test Compression", &code, &length);
 
-    int i;
-    for(i = 0; i < length; i++) {
-        printf("%x ", code[i]);
-    }
-
-    char *out;
     LZW_Decompress(code, length, &out);
 
     printf("\n%s", out);
