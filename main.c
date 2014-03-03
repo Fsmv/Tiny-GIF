@@ -167,6 +167,7 @@ void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
 
     *string = result;
 
+    free(currSym);
     dict_free(&dict);
 }
 
@@ -176,18 +177,39 @@ void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
  * @param infile name of the file to compress
  * @param outfile name of the file to write to
  */
-void compressFile(const FILE *infile, const FILE *outfile) {
+void processFile(FILE *infile, FILE *outfile, char shouldCompress) {
+    if(infile == NULL || outfile == NULL) {
+        fprintf(stderr, "Error: could not read files");
+        exit(1);
+    }
 
-}
+    //get file size of infile
+    fseek(infile, 0L, SEEK_END);
+    long inSize = ftell(infile);
+    fseek(infile, 0L, SEEK_SET);
 
-/**
- * Decompresses a file with the lzw algorithm and outputs in outfile
- *
- * @param infile name of the file to decompress
- * @param outfile name of the file to write to
- */
-void decompressFile(const FILE *infile, const FILE *outfile) {
+    char *inData = malloc(inSize * sizeof(char));
+    fread(inData, sizeof(char), inSize, infile);
 
+    if(shouldCompress) {
+        uint16_t *compressedData = NULL;
+        size_t dataSize;
+
+        LZW_Compress(inData, &compressedData, &dataSize);
+
+        fwrite(compressedData, sizeof(uint16_t), dataSize, outfile);
+        free(compressedData);
+    }else{
+        char *outString = NULL;
+        LZW_Decompress((uint16_t *) inData, inSize / (sizeof(uint16_t)/sizeof(char)), &outString);
+
+        fputs(outString, outfile);
+        free(outString);
+    }
+
+    free(inData);
+    fclose(infile);
+    fclose(outfile);
 }
 
 /**
@@ -214,20 +236,19 @@ void printHelp(char *name) {
  * @param isCompressing 1 if compressing 0 if decompressing
  * @return a file handle to the file to output to
  */
-FILE getOutFile(char *infile, const char isCompressing) {
+FILE *getOutFile(char *infile, const char isCompressing) {
     if(isCompressing) {
-        return fopen(strcat(infile, ".lzw"), "w");
+        return fopen(strcat(infile, ".lzw"), "wb");
     }else{
-        char *extPos = strrchr(infile, ".lzw");
         size_t len = strlen(infile);
 
         //if .lzw did not exist or was not the last 4 chars
-        if(extPos == NULL || extPos != (infile + len - 4)) {
-            return fopen(strcat(infile, ".orig"), "w");
+        if(strcmp(infile + len - 4, ".lzw") != 0) {
+            return fopen(strcat(infile, ".orig"), "wb");
         }else{
             //take off the last 4 chars, which are .lzw
             infile[strlen(infile) - 4] = '\0';
-            return fopen(infile, "w");
+            return fopen(infile, "wb");
         }
     }
 }
@@ -238,29 +259,19 @@ int main(int argc, char *argv[]) {
     if(argc <= 1 || argc > 3) {
         printHelp(argv[0]);
     }else if(argc == 2) {
-        compressFile(fopen(argv[1], "r"), getOutFile(argv[1], 1));
+        FILE *infile = fopen(argv[1], "rb");
+        processFile(infile, getOutFile(argv[1], 1), 1);
     }else if(argc == 3) {
         if(strcmp(argv[1], "-c") == 0) {
-            compressFile(fopen(argv[2], "r"), getOutFile(argv[2], 1));
+            FILE *infile = fopen(argv[2], "rb");
+            processFile(infile, getOutFile(argv[2], 1), 1);
         }else if(strcmp(argv[1], "-d") == 0) {
-            decmopressFile(fopen(argv[2], "r"), getOutFile(argv[2], 0));
+            FILE *infile = fopen(argv[2], "rb");
+            processFile(infile, getOutFile(argv[2], 0), 0);
         }else{
             printHelp(argv[0]);
         }
     }
-
-    uint16_t *code;
-    size_t length;
-    LZW_Compress("Test Compression", &code, &length);
-
-    LZW_Decompress(code, length, &out);
-
-    printf("\n%s", out);
-
-    //printf("\nOriginal Size: %d bytes\nCompressed: %d bytes\n", (int)strlen(out), (int)(2*length));
-
-    free(out);
-    free(code);
 
     printf("\nElapsed: %fs\n", (float)(clock() - last) / CLOCKS_PER_SEC);
 
