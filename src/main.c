@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    printf("\nElapsed: %fs\n", (float)(clock() - last) / CLOCKS_PER_SEC);
+    printf("Elapsed: %fs\n", (float)(clock() - last) / CLOCKS_PER_SEC);
 
     return 0;
 }
