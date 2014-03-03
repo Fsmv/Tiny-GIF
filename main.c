@@ -238,12 +238,12 @@ int main(int argc, char *argv[]) {
     if(argc <= 1 || argc > 3) {
         printHelp(argv[0]);
     }else if(argc == 2) {
-        compressFile(argv[1], getOutFile(argv[1], 1));
+        compressFile(fopen(argv[1], "r"), getOutFile(argv[1], 1));
     }else if(argc == 3) {
         if(strcmp(argv[1], "-c") == 0) {
-            compressFile(argv[2], getOutFile(argv[2], 1));
+            compressFile(fopen(argv[2], "r"), getOutFile(argv[2], 1));
         }else if(strcmp(argv[1], "-d") == 0) {
-            decmopressFile(argv[2], getOutFile(argv[2], 0));
+            decmopressFile(fopen(argv[2], "r"), getOutFile(argv[2], 0));
         }else{
             printHelp(argv[0]);
         }
