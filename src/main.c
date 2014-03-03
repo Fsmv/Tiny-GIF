@@ -53,7 +53,7 @@ void processFile(FILE *infile, FILE *outfile, char shouldCompress) {
 void printHelp(char *name) {
     printf("Usage %s [options] [file]\n", name);
     printf("Options:\n");
-    printf("\t-c: Compress file (appends .lzw");
+    printf("\t-c: Compress file (appends .lzw)\n");
     printf("\t-d: Decompress file (takes off .lzw or adds .orig)");
 }
 
@@ -89,11 +89,8 @@ FILE *getOutFile(char *infile, const char isCompressing) {
 int main(int argc, char *argv[]) {
     clock_t last = clock();
 
-    if(argc <= 1 || argc > 3) {
+    if(argc <= 1 || argc != 3) {
         printHelp(argv[0]);
-    }else if(argc == 2) {
-        FILE *infile = fopen(argv[1], "rb");
-        processFile(infile, getOutFile(argv[1], 1), 1);
     }else if(argc == 3) {
         if(strcmp(argv[1], "-c") == 0) {
             FILE *infile = fopen(argv[2], "rb");
