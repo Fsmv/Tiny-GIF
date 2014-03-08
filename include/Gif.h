@@ -1,6 +1,8 @@
 #ifndef GIF_H
 #define GIF_H
 
+#include <stddef.h>
+
 //Can't have the \0, so I have to initialize as actual char arrays
 static const char SIGNATURE[3] = {'G', 'I', 'F'};
 static const char VERSION[3] = {'8', '9', 'a'};

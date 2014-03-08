@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
-Project(lzw)
+Project(life-gif)
 
 set(SOURCES
     src/main.c
     src/LZW.c
     src/Dictionary.c
+    src/Gif.c
 )
 
 include_directories (
@@ -12,7 +13,7 @@ include_directories (
 )
 
 add_executable (
-    lzw
+    life-gif
     WIN32
     MACOSX_BUNDLE
     ${SOURCES}

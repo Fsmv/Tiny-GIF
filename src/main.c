@@ -9,7 +9,7 @@
  * Created on 2014-2-1
  */
 
-#include "gif.h"
+#include "Gif.h"
 
 static const unsigned short WIDTH  = 250;
 static const unsigned short HEIGHT = 250;
