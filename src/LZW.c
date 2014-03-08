@@ -43,9 +43,9 @@ void setChar(char **arr, size_t *size, size_t index, const char ch) {
     (*arr)[index] = ch;
 }
 
-void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
+void LZW_Compress(const char *string, uint16_t **code, size_t *codec, uint8_t alphabetSize) {
     Dictionary dict;
-    dict_init(&dict);
+    dict_init(&dict, alphabetSize);
 
     size_t resultLen = 64;
     uint16_t *result = malloc(sizeof(uint16_t) * resultLen);
@@ -63,11 +63,11 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
             //If the dictionary does not cantain the symbol, add it
             setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex));
 
-            //if we go over 16 bits reset the dictionary
-            if(dict.currIndex == 0xFFFF) {
+            //if we go over the max size of the variable reset the dictionary
+            if(dict.currIndex == -1) {
                 dict_free(&dict);
-                dict_init(&dict);
-                setCode(&result, &resultLen, resultIndex, CLEAR_CODE);
+                dict_init(&dict, alphabetSize);
+                setCode(&result, &resultLen, resultIndex, dict.clearCode);
             }
 
             //set the current symbol to last char read
@@ -90,9 +90,9 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec) {
     dict_free(&dict);
 }
 
-void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
+void LZW_Decompress(const uint16_t *code, const size_t codec, char **string, uint8_t alphabetSize) {
     Dictionary dict;
-    dict_init(&dict);
+    dict_init(&dict, alphabetSize);
 
     size_t symLen = 16;
     uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);
@@ -108,9 +108,9 @@ void LZW_Decompress(const uint16_t *code, const size_t codec, char **string) {
         size_t phraseLen;
 
         //If the clear code shows up reset the dictionary
-        if(code[i] == CLEAR_CODE) {
+        if(code[i] == dict.clearCode) {
             dict_free(&dict);
-            dict_init(&dict);
+            dict_init(&dict, alphabetSize);
             continue;
         }
 

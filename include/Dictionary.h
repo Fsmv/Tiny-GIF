@@ -4,10 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-static const uint8_t ALPHABET_SIZE = 0xFF;
-static const uint16_t CLEAR_CODE = 0x100;
-static const uint16_t LZW_FIRST_INDEX = 0x101;
-
 typedef struct NodeT {
     uint8_t val;
     uint16_t index;
@@ -18,15 +14,17 @@ typedef struct NodeT {
 typedef struct {
     Node *head;
     uint16_t currIndex;
+    uint16_t clearCode;
 } Dictionary;
 
 /**
  * Initializes the tree with the first tier alphabet
  *
  * @param head a node to make the head of the tree
+ * @param alphabetSize the size of the alphabet to use
  */
-extern void tree_init(Node *head);
-extern void dict_init(Dictionary *dict);
+extern void tree_init(Node *head, uint8_t alphabetSize);
+extern void dict_init(Dictionary *dict, uint8_t alphabetSize);
 
 /**
  * Deallocates the entire tree

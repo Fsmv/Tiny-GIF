@@ -2,22 +2,23 @@
 #include <string.h> //memcpy
 #include "Dictionary.h"
 
-void tree_init(Node *head) {
+void tree_init(Node *head, uint8_t alphabetSize) {
     head->val = head->index = -1;
-    head->numChildren = ALPHABET_SIZE;
-    head->children = malloc(sizeof(Node)*ALPHABET_SIZE);
+    head->numChildren = alphabetSize;
+    head->children = malloc(sizeof(Node)*alphabetSize);
 
     int i;
-    for(i = 0; i < ALPHABET_SIZE; i++) {
+    for(i = 0; i < alphabetSize; i++) {
         head->children[i].val = head->children[i].index = i;
         head->children[i].numChildren = 0;
     }
 }
 
-void dict_init(Dictionary *dict) {
+void dict_init(Dictionary *dict, uint8_t alphabetSize) {
     dict->head = malloc(sizeof(Node));
-    tree_init(dict->head);
-    dict->currIndex = LZW_FIRST_INDEX;
+    tree_init(dict->head, alphabetSize);
+    dict->clearCode = alphabetSize + 1;
+    dict->currIndex = alphabetSize + 3; //skip +2 for stop code
 }
 
 void node_add(Node *node, const uint8_t value, const uint8_t pos, uint16_t *currIndex) {
