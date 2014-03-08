@@ -184,10 +184,14 @@ void GIF_Init(Gif *gif, const unsigned short width, const unsigned short height,
     gif->width = width;
     gif->height = height;
     gif->flags = 0xF0 | (char)((log(numColors)/log(2)) - 1);
-    gif->repeatTimes = numRepeats;
 
     gif->backgroundColor = 0;  //bacground color is the first one
     gif->aspectRatio = 0;      //aspect ratio is square
+
+    gif->colorTable = colorTable;
+    gif->images = NULL;
+    gif->numFrames = 0;
+    gif->repeatTimes = numRepeats;
 }
 
 void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short delayTime) {
@@ -195,7 +199,10 @@ void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short dela
     //resize the images array
     Image *oldImages = gif->images;
     gif->images = malloc(sizeof(Image) * (gif->numFrames + 1));
-    memcpy(gif->images, oldImages, gif->numFrames);
+    if(oldImages != NULL) {
+        memcpy(gif->images, oldImages, gif->numFrames);
+        free(oldImages);
+    }
 
     imageInit(gif, gif->images + gif->numFrames, delayTime);
     gif->images[gif->numFrames].imageData = splitDataBlocks(data,
