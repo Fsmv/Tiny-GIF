@@ -46,7 +46,6 @@ typedef struct __attribute__((__packed__)) {
     char LZWMinCodeSize;
     DataBlock *imageData;
     size_t numBlocks;
-    unsigned short repeatTimes;
 } Image;
 
 //gif89a specification http://www.w3.org/Graphics/GIF/spec-gif89a.txt
@@ -65,6 +64,7 @@ typedef struct __attribute__((__packed__)) {
     const char *colorTable;        //pointer to the global color table
     Image *images;                 //headers and data for each frame
     size_t numFrames;
+    unsigned short repeatTimes;
 } Gif;
 
 /**
