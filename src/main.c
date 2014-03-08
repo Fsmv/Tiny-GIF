@@ -16,7 +16,7 @@ static const unsigned short HEIGHT = 250;
 static const unsigned short DELAY_TIME = 100/10; //100/FPS
 
 static const unsigned char numColors = 4;
-static const unsigned char COLOR_TABLE[4] = {
+static const unsigned char COLOR_TABLE[12] = {
     0x00, 0x00, 0x00, //black
     0xFF, 0xFF, 0xFF, //white
     0xFF, 0xAA, 0x00, //orange
