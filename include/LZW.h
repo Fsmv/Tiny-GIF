@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+//the maximum index for gifs
+#define MAX_INDEX 0xFFF
+
 /**
  * Compresses a string with the LZW algorithm
  *

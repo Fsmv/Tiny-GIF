@@ -64,7 +64,7 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec, uint8_t al
             setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex));
 
             //if we go over the max size of the variable reset the dictionary
-            if(dict.currIndex == -1) {
+            if(dict.currIndex == MAX_INDEX || dict.currIndex == -1) {
                 dict_free(&dict);
                 dict_init(&dict, alphabetSize);
                 setCode(&result, &resultLen, resultIndex, dict.clearCode);
