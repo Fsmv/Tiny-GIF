@@ -79,7 +79,7 @@ void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
 
     img->separator = SEPARATOR;
     img->imgFlags = 0;
-    img->LZWMinCodeSize = CODE_SIZE;
+    img->LZWMinCodeSize = (gif->flags & 0xF) + 1; 
 
     //GCE data
     img->introducer = INTRODUCER;
@@ -166,13 +166,13 @@ void writeToFile(Gif *gif, const char *fileName) {
     fclose(file);
 }
 
-void freeImageData(DataBlock *blocks, size_t size) {
+void freeImage(Image *image) {
     int i;
-    for(i = 0; i < size; i++) {
-        free(blocks[i].data);
+    for(i = 0; i < image->numBlocks; i++) {
+        free(image->blockData[i].data);
     }
 
-    free(blocks);
+    free(image->blockData);
 }
 
 void GIF_Init(Gif *gif, const unsigned short width, const unsigned short height,
@@ -209,4 +209,15 @@ void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short dela
             gif->width*gif->height, &(gif->images[gif->numFrames].numBlocks));
 
     gif->numFrames++;
+}
+
+
+void GIF_Free(Gif *gif) {
+    int i;
+    for(i = 0; i < gif->numFrames; i++) {
+        freeImage(gif->images[i]);
+    }
+
+    free(gif->images);
+    gif->images = NULL;
 }
