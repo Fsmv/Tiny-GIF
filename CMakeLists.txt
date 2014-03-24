@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 Project(life-gif)
 
-option(SHARED_LIB "Build as a shared library" OFF)
+option(SHARED_LIB "Build as a shared library" ON)
 
 set(SOURCES
     src/LZW.c
