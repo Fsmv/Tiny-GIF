@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Gif.h"
-#include "Dictionary.h"
+#include "LZW.h"
 
 //Can't have the \0, so I have to initialize as actual char arrays
 static const char SIGNATURE[3] = {'G', 'I', 'F'};
@@ -91,41 +91,105 @@ void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
     img->gceTerminator = 0;
 }
 
-//subtracted 2 from blocksize for the CLEAR and STOP codes
-DataBlock *splitDataBlocks(const char *frame, size_t size, size_t *numBlocks) {
-    *numBlocks = size/(BLOCK_SIZE-1); //-1 because each block needs a CLEAR char
-    int lastSize = (size%(BLOCK_SIZE-1)) + 2; //CLEAR in the beginning plus STOP at the end
+DataBlock splitDataBlocks(const char *frame, const char codeSize, size_t size, size_t *numBlocks) {
+    uint16_t *compressedData;
+    size_t compressedSize;
+    LZW_Compress(frame, &compressedData, &compressedSize, (1 << codeSize) - 1);
 
-    //allocate an array of data blocks
-    DataBlock *result = malloc(sizeof(DataBlock) * 
-            (lastSize > 0 ? *numBlocks+1 : *numBlocks));
+    //TODO: resizing to be minimal
+    unsigned char *packedData = calloc(compressedSize, sizeof(char));
+    int packedIndex = 0;
+    int bitsWritten = 0;
 
-    //copy all the blocks that fill the max size
     int i;
-    for(i = 0; i < *numBlocks; i++) {
-        result[i].blockSize = BLOCK_SIZE;
-        result[i].data = malloc(BLOCK_SIZE);
-        memcpy(result[i].data+1, frame + (i*(BLOCK_SIZE-1)), BLOCK_SIZE-1);
+    for(i = 0; i < compressedSize; i++) {
+        int bitsInNum = floor(log(compressedData[i])/log(2)) + 1;
 
-        result[i].data[0] = 1 << CODE_SIZE; //write clear to reset the LZW table
+        if(bitsInNum <= 8 - bitsWritten) {
+            packedData[packedIndex] |= compressedData[i] << bitsWritten;
+            bitsWritten += bitsInNum;
+
+            if(bitsWritten == 8) {
+                bitsWritten = 0;
+                packedIndex++;
+            }
+        }else{
+            int bitsUsed = 0;
+            while(bitsUsed != bitsInNum) {
+                int bitsToWrite = ((bitsInNum - bitsUsed) <= 8 - bitsWritten) ?
+                        (bitsInNum - bitsUsed) : (8 - bitsWritten);
+                int mask = ((1 << bitsToWrite) - 1) << bitsUsed;
+                int num = (compressedData[i] & mask) >> bitsUsed;
+
+                packedData[packedIndex] |= num << bitsWritten;
+                bitsWritten += bitsToWrite;
+                bitsUsed += bitsToWrite;
+
+                if(bitsWritten == 8) {
+                    bitsWritten = 0;
+                    packedIndex++;
+                }
+            }
+        }
     }
 
-    //copy the last block too if necessary
-    if(lastSize > 0) {
-        result[*numBlocks].blockSize = lastSize;
-        result[*numBlocks].data = malloc(lastSize);
-        memcpy(result[*numBlocks].data+1, frame + (*numBlocks*(BLOCK_SIZE-1)), lastSize-2);
-
-        result[*numBlocks].data[0] = 1 << CODE_SIZE; //clear
-        result[*numBlocks].data[lastSize-1] = result[*numBlocks].data[0]+1; //stop
-
-        (*numBlocks)++;
+    if(bitsWritten != 0) {
+        packedIndex++;
     }
 
+    DataBlock result;
+    result.data = realloc(packedData, packedIndex);
+    result.blockSize = packedIndex;
     return result;
 }
 
-void writeToFile(Gif *gif, const char *fileName) {
+void freeImage(Image *image) {
+    int i;
+    for(i = 0; i < image->numBlocks; i++) {
+        free(image->imageData[i].data);
+    }
+
+    free(image->imageData);
+}
+
+void GIF_Init(Gif *gif, const unsigned short width, const unsigned short height,
+              const unsigned char *colorTable, const unsigned char numColors,
+              const unsigned short numRepeats) {
+    memcpy(gif->signature, SIGNATURE, 3);
+    memcpy(gif->version, VERSION, 3);
+
+    gif->width = width;
+    gif->height = height;
+    gif->flags = 0xF0 | (char)((log(numColors)/log(2)) - 1);
+
+    gif->backgroundColor = 0;  //bacground color is the first one
+    gif->aspectRatio = 0;      //aspect ratio is square
+
+    gif->colorTable = colorTable;
+    gif->images = NULL;
+    gif->numFrames = 0;
+    gif->repeatTimes = numRepeats;
+}
+
+/*void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short delayTime) {
+    //TODO: find a way to allow a static array size from the beginning for speed
+    //resize the images array
+    Image *oldImages = gif->images;
+    gif->images = malloc(sizeof(Image) * (gif->numFrames + 1));
+    if(oldImages != NULL) {
+        memcpy(gif->images, oldImages, gif->numFrames);
+        free(oldImages);
+    }
+
+    imageInit(gif, gif->images + gif->numFrames, delayTime);
+    gif->images[gif->numFrames].imageData = splitDataBlocks(data,
+            gif->images[gif->numFrames].LZWMinCodeSize,
+            gif->width*gif->height, &(gif->images[gif->numFrames].numBlocks));
+
+    gif->numFrames++;
+}*/
+
+void GIF_Write(Gif *gif, const char *fileName) {
     FILE *file = fopen(fileName, "wb");
 
     if(!file) {
@@ -166,56 +230,10 @@ void writeToFile(Gif *gif, const char *fileName) {
     fclose(file);
 }
 
-void freeImage(Image *image) {
-    int i;
-    for(i = 0; i < image->numBlocks; i++) {
-        free(image->blockData[i].data);
-    }
-
-    free(image->blockData);
-}
-
-void GIF_Init(Gif *gif, const unsigned short width, const unsigned short height,
-              const unsigned char *colorTable, const unsigned char numColors,
-              const unsigned short numRepeats) {
-    memcpy(gif->signature, SIGNATURE, 3);
-    memcpy(gif->version, VERSION, 3);
-
-    gif->width = width;
-    gif->height = height;
-    gif->flags = 0xF0 | (char)((log(numColors)/log(2)) - 1);
-
-    gif->backgroundColor = 0;  //bacground color is the first one
-    gif->aspectRatio = 0;      //aspect ratio is square
-
-    gif->colorTable = colorTable;
-    gif->images = NULL;
-    gif->numFrames = 0;
-    gif->repeatTimes = numRepeats;
-}
-
-void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short delayTime) {
-    //TODO: find a way to allow a static array size from the beginning for speed
-    //resize the images array
-    Image *oldImages = gif->images;
-    gif->images = malloc(sizeof(Image) * (gif->numFrames + 1));
-    if(oldImages != NULL) {
-        memcpy(gif->images, oldImages, gif->numFrames);
-        free(oldImages);
-    }
-
-    imageInit(gif, gif->images + gif->numFrames, delayTime);
-    gif->images[gif->numFrames].imageData = splitDataBlocks(data,
-            gif->width*gif->height, &(gif->images[gif->numFrames].numBlocks));
-
-    gif->numFrames++;
-}
-
-
 void GIF_Free(Gif *gif) {
     int i;
     for(i = 0; i < gif->numFrames; i++) {
-        freeImage(gif->images[i]);
+        freeImage(gif->images + i);
     }
 
     free(gif->images);

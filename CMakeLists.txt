@@ -18,3 +18,8 @@ add_executable (
     MACOSX_BUNDLE
     ${SOURCES}
 )
+
+#math library, for log
+if(UNIX)
+    target_link_libraries(life-gif m)
+endif(UNIX)
