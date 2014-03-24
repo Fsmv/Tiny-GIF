@@ -14,7 +14,7 @@ typedef struct Gif_priv Gif;
  * @param numColors number of colors in the table (must be power of 2)
  * @param numRepeats number of times to loop the animation
  */
-extern void GIF_Init(Gif *gif, const unsigned short width, const unsigned short height,
+extern Gif *GIF_Init(const unsigned short width, const unsigned short height,
                      const unsigned char *colorTable, const unsigned char numColors,
                      const unsigned short numRepeats);
 

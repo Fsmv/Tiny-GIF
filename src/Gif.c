@@ -141,7 +141,7 @@ size_t packData(const uint16_t *compressedData, size_t compressedSize, DataBlock
 DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize,  size_t *numBlocks) {
     uint16_t *compressedData;
     size_t compressedSize;
-    LZW_Compress(frame, &compressedData, &compressedSize, (1 << codeSize) - 1);
+    LZW_Compress(frame, size, &compressedData, &compressedSize, (1 << codeSize) - 1);
 
     *numBlocks = compressedSize/BLOCK_SIZE + 1;
 
@@ -176,9 +176,11 @@ void freeImage(Image *image) {
     free(image->imageData);
 }
 
-void GIF_Init(Gif *gif, const unsigned short width, const unsigned short height,
+Gif *GIF_Init(const unsigned short width, const unsigned short height,
               const unsigned char *colorTable, const unsigned char numColors,
               const unsigned short numRepeats) {
+    Gif *gif = malloc(sizeof(Gif));
+
     memcpy(gif->signature, SIGNATURE, 3);
     memcpy(gif->version, VERSION, 3);
 
@@ -193,25 +195,23 @@ void GIF_Init(Gif *gif, const unsigned short width, const unsigned short height,
     gif->images = NULL;
     gif->numFrames = 0;
     gif->repeatTimes = numRepeats;
+
+    return gif;
 }
 
-/*void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short delayTime) {
+void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short delayTime) {
     //TODO: find a way to allow a static array size from the beginning for speed
     //resize the images array
-    Image *oldImages = gif->images;
-    gif->images = malloc(sizeof(Image) * (gif->numFrames + 1));
-    if(oldImages != NULL) {
-        memcpy(gif->images, oldImages, gif->numFrames);
-        free(oldImages);
-    }
+    gif->images = realloc(gif->images, sizeof(Image) * (gif->numFrames + 1));
 
     imageInit(gif, gif->images + gif->numFrames, delayTime);
     gif->images[gif->numFrames].imageData = splitDataBlocks(data,
+            gif->width*gif->height,
             gif->images[gif->numFrames].LZWMinCodeSize,
-            gif->width*gif->height, &(gif->images[gif->numFrames].numBlocks));
+            &(gif->images[gif->numFrames].numBlocks));
 
     gif->numFrames++;
-}*/
+}
 
 void GIF_Write(Gif *gif, const char *fileName) {
     FILE *file = fopen(fileName, "wb");
@@ -262,4 +262,6 @@ void GIF_Free(Gif *gif) {
 
     free(gif->images);
     gif->images = NULL;
+
+    free(gif);
 }
