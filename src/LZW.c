@@ -49,7 +49,8 @@ void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *c
 
     size_t resultLen = 64;
     uint16_t *result = malloc(sizeof(uint16_t) * resultLen);
-    size_t resultIndex = 0;
+    size_t resultIndex = 1;
+    setCode(&result, &resultLen, 0, alphabetSize+1); //first code should be clear
 
     size_t symLen = 16;
     uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);

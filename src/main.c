@@ -12,8 +12,8 @@
 #include "string.h"
 #include "Gif.h"
 
-static const unsigned short WIDTH  = 250;
-static const unsigned short HEIGHT = 250;
+static const unsigned short WIDTH  = 10;
+static const unsigned short HEIGHT = 10;
 static const unsigned short DELAY_TIME = 100/10; //100/FPS
 
 static const unsigned char numColors = 4;
@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
     char frame[WIDTH*HEIGHT];
     memset(frame, 2, WIDTH*HEIGHT);
     GIF_AddImage(gif, frame, DELAY_TIME);
-    memset(frame, 1, WIDTH*HEIGHT);
-    GIF_AddImage(gif, frame, DELAY_TIME);
+    //memset(frame, 1, WIDTH*HEIGHT);
+    //GIF_AddImage(gif, frame, DELAY_TIME);
 
     GIF_Write(gif, "./out.gif");
 

@@ -91,7 +91,7 @@ void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
     img->gceTerminator = 0;
 }
 
-size_t packData(const uint16_t *compressedData, size_t compressedSize, DataBlock *container) {
+size_t packData(const uint16_t *compressedData, size_t compressedSize, const char codeSize, DataBlock *container) {
     unsigned char *packedData = calloc(compressedSize*2, sizeof(char));
     int packedIndex = 0;
     int bitsWritten = 0;
@@ -99,6 +99,9 @@ size_t packData(const uint16_t *compressedData, size_t compressedSize, DataBlock
     int i;
     for(i = 0; i < compressedSize && packedIndex < BLOCK_SIZE; i++) {
         int bitsInNum = floor(log(compressedData[i])/log(2)) + 1;
+        if(bitsInNum < codeSize) {
+            bitsInNum = codeSize;
+        }
 
         if(bitsInNum <= 8 - bitsWritten) {
             packedData[packedIndex] |= compressedData[i] << bitsWritten;
@@ -154,7 +157,7 @@ DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize, 
     for(i = 0; i < *numBlocks && compressedSize > 0; i++) {
         int shortsUsed = packData(compressedData,
                 compressedSize <= BLOCK_SIZE ? compressedSize : BLOCK_SIZE,
-                result + i);
+                codeSize + 1, result + i);
         compressedData += shortsUsed;
         compressedSize -= shortsUsed;
     }
