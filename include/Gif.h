@@ -34,7 +34,7 @@ extern void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned sho
  * @param gif data to write
  * @param fileName file to write to
  */
-extern void GIF_Write(Gif *gif, const char *fileName);
+extern void GIF_Write(const Gif *gif, const char *fileName);
 
 /**
  * Deallocates gif data

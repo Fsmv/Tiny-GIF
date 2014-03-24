@@ -186,7 +186,7 @@ Gif *GIF_Init(const unsigned short width, const unsigned short height,
 
     gif->width = width;
     gif->height = height;
-    gif->flags = 0xF0 | (char)((log(numColors)/log(2)) - 1);
+    gif->flags = 0xF0 | (char) floor(log(numColors)/log(2)) - 1;
 
     gif->backgroundColor = 0;  //bacground color is the first one
     gif->aspectRatio = 0;      //aspect ratio is square
@@ -202,7 +202,11 @@ Gif *GIF_Init(const unsigned short width, const unsigned short height,
 void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short delayTime) {
     //TODO: find a way to allow a static array size from the beginning for speed
     //resize the images array
-    gif->images = realloc(gif->images, sizeof(Image) * (gif->numFrames + 1));
+    if(gif->numFrames == 0 || gif->images == NULL) {
+        gif->images = malloc(sizeof(Image));
+    }else{
+        gif->images = realloc(gif->images, sizeof(Image) * (gif->numFrames + 1));
+    }
 
     imageInit(gif, gif->images + gif->numFrames, delayTime);
     gif->images[gif->numFrames].imageData = splitDataBlocks(data,
@@ -213,7 +217,7 @@ void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short dela
     gif->numFrames++;
 }
 
-void GIF_Write(Gif *gif, const char *fileName) {
+void GIF_Write(const Gif *gif, const char *fileName) {
     FILE *file = fopen(fileName, "wb");
 
     if(!file) {
