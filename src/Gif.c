@@ -12,7 +12,7 @@ static const char INTRODUCER = 0x21; //extension introducer
 static const char GCE_LABEL = 0xF9;  //Graphic Control Extension label
 static const char SEPARATOR = 0x2C;  //image block separator
 static const char TRAILER = 0x3B;    //End of block + gif trialer (little endian)
-static const unsigned char BLOCK_SIZE = 127; //2^LZWCodeSize - 1
+static const unsigned char BLOCK_SIZE = 0xFF;
 static const char REPEAT_HEADER_SIZE = 16; //omitting the last 3 bytes
 static const char REPEAT_HEADER[19] = {
     0x21, 0xFF, //application block flags
@@ -93,18 +93,18 @@ void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
 
 size_t packData(const uint16_t *compressedData, size_t compressedSize, const char codeSize, DataBlock *container) {
     unsigned char *packedData = calloc(compressedSize*2, sizeof(char));
+    int compressedIndex = 0;
     int packedIndex = 0;
     int bitsWritten = 0;
 
-    int i;
-    for(i = 0; i < compressedSize && packedIndex < BLOCK_SIZE; i++) {
-        int bitsInNum = floor(log(compressedData[i])/log(2)) + 1;
+    while(packedIndex < BLOCK_SIZE && compressedIndex < compressedSize) {
+        int bitsInNum = floor(log(compressedData[compressedIndex])/log(2)) + 1;
         if(bitsInNum < codeSize) {
             bitsInNum = codeSize;
         }
 
         if(bitsInNum <= 8 - bitsWritten) {
-            packedData[packedIndex] |= compressedData[i] << bitsWritten;
+            packedData[packedIndex] |= compressedData[compressedIndex] << bitsWritten;
             bitsWritten += bitsInNum;
 
             if(bitsWritten == 8) {
@@ -117,7 +117,7 @@ size_t packData(const uint16_t *compressedData, size_t compressedSize, const cha
                 int bitsToWrite = ((bitsInNum - bitsUsed) <= 8 - bitsWritten) ?
                         (bitsInNum - bitsUsed) : (8 - bitsWritten);
                 int mask = ((1 << bitsToWrite) - 1) << bitsUsed;
-                int num = (compressedData[i] & mask) >> bitsUsed;
+                int num = (compressedData[compressedIndex] & mask) >> bitsUsed;
 
                 packedData[packedIndex] |= num << bitsWritten;
                 bitsWritten += bitsToWrite;
@@ -129,6 +129,8 @@ size_t packData(const uint16_t *compressedData, size_t compressedSize, const cha
                 }
             }
         }
+
+        compressedIndex++;
     }
 
     //if the above for loop limits at BLOCK_SIZE this will always be false
@@ -138,7 +140,7 @@ size_t packData(const uint16_t *compressedData, size_t compressedSize, const cha
 
     container->data = realloc(packedData, packedIndex);
     container->blockSize = packedIndex;
-    return i;
+    return compressedIndex;
 }
 
 DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize,  size_t *numBlocks) {
@@ -150,13 +152,12 @@ DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize, 
     *numBlocks = compressedSize/BLOCK_SIZE + 1;
 
     //allocate an array of data blocks
-    DataBlock *result = malloc(sizeof(DataBlock) * (*numBlocks));
+    DataBlock *result = malloc(1);
 
 
     //copy all the blocks that fill the max size
-    int i;
-    for(i = 0; i < *numBlocks; i++) {
-        int numToPack = BLOCK_SIZE;
+    int blockIndex = 0;
+    while(compressedSize != 0) {
         if(compressedSize <= BLOCK_SIZE) {
             uint16_t *temp = compressedData;
             compressedData = malloc((compressedSize + 1) * sizeof(uint16_t));
@@ -164,10 +165,10 @@ DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize, 
 
             compressedData[compressedSize] = (1 << codeSize) + 1;
             compressedSize++;
-            numToPack = compressedSize;
         }
 
-        int shortsUsed = packData(compressedData, numToPack, codeSize + 1, result + i);
+        result = realloc(result, sizeof(DataBlock) * (blockIndex + 1));
+        int shortsUsed = packData(compressedData, compressedSize, codeSize + 1, result + blockIndex);
 
         if(compressedSize - 1 <= BLOCK_SIZE) {
             free(compressedData);
@@ -175,6 +176,7 @@ DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize, 
 
         compressedData += shortsUsed;
         compressedSize -= shortsUsed;
+        blockIndex++;
     }
 
     free(fullData);
