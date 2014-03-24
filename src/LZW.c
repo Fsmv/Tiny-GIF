@@ -43,7 +43,7 @@ void setChar(char **arr, size_t *size, size_t index, const char ch) {
     (*arr)[index] = ch;
 }
 
-void LZW_Compress(const char *string, uint16_t **code, size_t *codec, uint8_t alphabetSize) {
+void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *codec, uint8_t alphabetSize) {
     Dictionary dict;
     dict_init(&dict, alphabetSize);
 
@@ -54,8 +54,8 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec, uint8_t al
     size_t symLen = 16;
     uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);
     size_t symIndex = 0;
-    size_t charIndex = 0;
-    while(string[charIndex] != '\0') {
+    size_t charIndex;
+    for(charIndex = 0; charIndex < stringc; charIndex++) {
         setChar((char**)&currSym, &symLen, symIndex, string[charIndex]);
         symIndex++;
 
@@ -75,8 +75,6 @@ void LZW_Compress(const char *string, uint16_t **code, size_t *codec, uint8_t al
             symIndex = 1;
             resultIndex++;
         }
-
-        charIndex++;
     }
 
     setChar((char**)&currSym, &symLen, symIndex, '\0');

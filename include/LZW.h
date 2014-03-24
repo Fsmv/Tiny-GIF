@@ -15,8 +15,9 @@
  * @param string the text to compress
  * @param code pointer to the array to store the result in
  * @param codec pointer to the size of the array allocated
+ * @param alphabetSize the number of possible initial codes
  */
-extern void LZW_Compress(const char *string, uint16_t **code, size_t *codec, uint8_t alphabetSize);
+extern void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *codec, uint8_t alphabetSize);
 
 /**
  * Decompresses an LZW Code
@@ -26,6 +27,7 @@ extern void LZW_Compress(const char *string, uint16_t **code, size_t *codec, uin
  * @param code the code to decompress
  * @param codec the size of the code array
  * @param string pointer to store a new string in
+ * @param alphabetSize the number of possible initial codes
  */
 extern void LZW_Decompress(const uint16_t *code, const size_t codec, char **string, uint8_t alphabetSize);
 
