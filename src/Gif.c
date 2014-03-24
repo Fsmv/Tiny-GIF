@@ -11,7 +11,7 @@ static const char VERSION[3] = {'8', '9', 'a'};
 static const char INTRODUCER = 0x21; //extension introducer
 static const char GCE_LABEL = 0xF9;  //Graphic Control Extension label
 static const char SEPARATOR = 0x2C;  //image block separator
-static const short TRAILER = 0x3B00; //End of block + gif trialer (little endian)
+static const char TRAILER = 0x3B;    //End of block + gif trialer (little endian)
 static const unsigned char BLOCK_SIZE = 127; //2^LZWCodeSize - 1
 static const char REPEAT_HEADER_SIZE = 16; //omitting the last 3 bytes
 static const char REPEAT_HEADER[19] = {
@@ -145,6 +145,7 @@ DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize, 
     uint16_t *compressedData;
     size_t compressedSize;
     LZW_Compress(frame, size, &compressedData, &compressedSize, (1 << codeSize) - 1);
+    uint16_t *fullData = compressedData;
 
     *numBlocks = compressedSize/BLOCK_SIZE + 1;
 
@@ -154,19 +155,29 @@ DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize, 
 
     //copy all the blocks that fill the max size
     int i;
-    for(i = 0; i < *numBlocks && compressedSize > 0; i++) {
-        int shortsUsed = packData(compressedData,
-                compressedSize <= BLOCK_SIZE ? compressedSize : BLOCK_SIZE,
-                codeSize + 1, result + i);
+    for(i = 0; i < *numBlocks; i++) {
+        int numToPack = BLOCK_SIZE;
+        if(compressedSize <= BLOCK_SIZE) {
+            uint16_t *temp = compressedData;
+            compressedData = malloc((compressedSize + 1) * sizeof(uint16_t));
+            memcpy(compressedData, temp, compressedSize * sizeof(uint16_t));
+
+            compressedData[compressedSize] = (1 << codeSize) + 1;
+            compressedSize++;
+            numToPack = compressedSize;
+        }
+
+        int shortsUsed = packData(compressedData, numToPack, codeSize + 1, result + i);
+
+        if(compressedSize - 1 <= BLOCK_SIZE) {
+            free(compressedData);
+        }
+
         compressedData += shortsUsed;
         compressedSize -= shortsUsed;
     }
 
-    DataBlock *last = result + i - 1;
-    last->data = realloc(last->data, last->blockSize + 1);
-    last->data[last->blockSize] = (1 << codeSize) + 1;
-    last->blockSize++;
-
+    free(fullData);
     return result;
 }
 
@@ -254,9 +265,11 @@ void GIF_Write(const Gif *gif, const char *fileName) {
             fwrite(gif->images[i].imageData[j].data,
                     gif->images[i].imageData[j].blockSize, 1, file);
         }
+
+        fputc(0x00, file); //block separator
     }
 
-    fwrite(&TRAILER, 2, 1, file); //write trailer
+    fputc(TRAILER, file); //write trailer
 
     fclose(file);
 }

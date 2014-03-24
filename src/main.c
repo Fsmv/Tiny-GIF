@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
     char frame[WIDTH*HEIGHT];
     memset(frame, 2, WIDTH*HEIGHT);
     GIF_AddImage(gif, frame, DELAY_TIME);
-    //memset(frame, 1, WIDTH*HEIGHT);
-    //GIF_AddImage(gif, frame, DELAY_TIME);
+    memset(frame, 1, WIDTH*HEIGHT);
+    GIF_AddImage(gif, frame, DELAY_TIME);
 
     GIF_Write(gif, "./out.gif");
 
