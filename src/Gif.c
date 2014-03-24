@@ -91,18 +91,13 @@ void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
     img->gceTerminator = 0;
 }
 
-DataBlock splitDataBlocks(const char *frame, const char codeSize, size_t size, size_t *numBlocks) {
-    uint16_t *compressedData;
-    size_t compressedSize;
-    LZW_Compress(frame, &compressedData, &compressedSize, (1 << codeSize) - 1);
-
-    //TODO: resizing to be minimal
-    unsigned char *packedData = calloc(compressedSize, sizeof(char));
+size_t packData(const uint16_t *compressedData, size_t compressedSize, DataBlock *container) {
+    unsigned char *packedData = calloc(compressedSize*2, sizeof(char));
     int packedIndex = 0;
     int bitsWritten = 0;
 
     int i;
-    for(i = 0; i < compressedSize; i++) {
+    for(i = 0; i < compressedSize && packedIndex < BLOCK_SIZE; i++) {
         int bitsInNum = floor(log(compressedData[i])/log(2)) + 1;
 
         if(bitsInNum <= 8 - bitsWritten) {
@@ -133,13 +128,42 @@ DataBlock splitDataBlocks(const char *frame, const char codeSize, size_t size, s
         }
     }
 
+    //if the above for loop limits at BLOCK_SIZE this will always be false
     if(bitsWritten != 0) {
         packedIndex++;
     }
 
-    DataBlock result;
-    result.data = realloc(packedData, packedIndex);
-    result.blockSize = packedIndex;
+    container->data = realloc(packedData, packedIndex);
+    container->blockSize = packedIndex;
+    return i;
+}
+
+DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize,  size_t *numBlocks) {
+    uint16_t *compressedData;
+    size_t compressedSize;
+    LZW_Compress(frame, &compressedData, &compressedSize, (1 << codeSize) - 1);
+
+    *numBlocks = compressedSize/BLOCK_SIZE + 1;
+
+    //allocate an array of data blocks
+    DataBlock *result = malloc(sizeof(DataBlock) * (*numBlocks));
+
+
+    //copy all the blocks that fill the max size
+    int i;
+    for(i = 0; i < *numBlocks && compressedSize > 0; i++) {
+        int shortsUsed = packData(compressedData,
+                compressedSize <= BLOCK_SIZE ? compressedSize : BLOCK_SIZE,
+                result + i);
+        compressedData += shortsUsed;
+        compressedSize -= shortsUsed;
+    }
+
+    DataBlock *last = result + i - 1;
+    last->data = realloc(last->data, last->blockSize + 1);
+    last->data[last->blockSize] = (1 << codeSize) + 1;
+    last->blockSize++;
+
     return result;
 }
 
