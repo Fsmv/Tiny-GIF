@@ -39,3 +39,4 @@ if(UNIX)
 endif(UNIX)
 
 install(TARGETS tinygif LIBRARY DESTINATION lib)
+install(FILES ${CMAKE_SOURCE_DIR}/include/Gif.h DESTINATION include)
