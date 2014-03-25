@@ -27,7 +27,6 @@ add_library (
 
 add_executable(
     tinygif-example
-    WIN32
     MACOSX_BUNDLE
     src/main.c
 )
@@ -38,3 +37,5 @@ target_link_libraries(tinygif-example tinygif)
 if(UNIX)
     target_link_libraries(tinygif m)
 endif(UNIX)
+
+install(TARGETS tinygif LIBRARY DESTINATION lib)
