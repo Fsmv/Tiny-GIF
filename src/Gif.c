@@ -99,10 +99,20 @@ size_t packData(const uint16_t *compressedData, size_t compressedSize, const uin
     int bitsWritten = 0;
     int codeSize;
     for(codeSize = 0; codeSize < 10; codeSize++) {
-        if(codeSizes[codeSize] == 0) {
+        if(codeSizes[codeSize] == offset || codeSize == 9) {
+            break;
+        }else if(codeSizes[codeSize] != 0xFFFF && codeSizes[codeSize] > offset) {
+            codeSize--;
             break;
         }
     }
+
+    int i;
+    for(i = 0; i < 10; i++) {
+        printf("%d\n", codeSizes[i]);
+    }
+
+    printf("%d: %d, %d\n\n", codeSizes[codeSize], codeSize, offset);
 
     while(packedIndex < BLOCK_SIZE && compressedIndex < compressedSize) {
         int bitsInNum = floor(log(compressedData[compressedIndex])/log(2)) + 1;
