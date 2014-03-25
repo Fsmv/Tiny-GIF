@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "Dictionary.h"
 #include "LZW.h"
 
@@ -49,8 +50,15 @@ void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *c
 
     size_t resultLen = 64;
     uint16_t *result = malloc(sizeof(uint16_t) * resultLen);
-    size_t resultIndex = 1;
-    setCode(&result, &resultLen, 0, alphabetSize+1); //first code should be clear
+    size_t resultIndex = 11;
+    setCode(&result, &resultLen, resultIndex-1, alphabetSize+1); //first code should be clear
+
+    int maxCodeLen = floor(log(alphabetSize+1)/log(2)) + 1;
+    int i;
+    for(i = 0; i < 10; i++) {
+        result[i] = -1;
+    }
+    result[maxCodeLen] = 0;
 
     size_t symLen = 16;
     uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);
@@ -63,6 +71,11 @@ void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *c
         if(!dict_contains(&dict, currSym, symIndex)) {
             //If the dictionary does not cantain the symbol, add it
             setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex));
+            int codeSize = floor(log(dict.currIndex)/log(2)) + 1;
+            if(codeSize > maxCodeLen) {
+                result[codeSize] = resultIndex - 9 + 1;
+                maxCodeLen = codeSize;
+            }
 
             //if we go over the max size of the variable reset the dictionary
             if(dict.currIndex == MAX_INDEX || dict.currIndex == -1) {
