@@ -38,5 +38,5 @@ if(UNIX)
     target_link_libraries(tinygif m)
 endif(UNIX)
 
-install(TARGETS tinygif LIBRARY DESTINATION lib)
+install(TARGETS tinygif LIBRARY DESTINATION lib ARCHIVE DESTINATION lib)
 install(FILES ${CMAKE_SOURCE_DIR}/include/Gif.h DESTINATION include)
