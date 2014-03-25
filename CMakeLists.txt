@@ -21,25 +21,16 @@ endif()
 
 set(TINYGIF_LIBS ${PROJECT_BINARY_DIR}/lib/${PREFIX}tinygif${SUFFIX})
 
-set(SOURCES
-    src/main.c
-)
-
 include_directories (
-    ${CMAKE_SOURCE_DIR}/include
+    ${PROJECT_BINARY_DIR}/include
 )
 
 add_executable (
     life-gif
     MACOSX_BUNDLE
-    ${SOURCES}
+    main.c
 )
 
 add_dependencies(life-gif tinygif)
 
 target_link_libraries(life-gif ${TINYGIF_LIBS})
-
-#math library, for log
-if(UNIX)
-    target_link_libraries(life-gif m)
-endif(UNIX)
