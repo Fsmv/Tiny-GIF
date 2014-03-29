@@ -11,7 +11,7 @@
  * @param index position to add to
  * @param code element to add
  */
-void setCode(uint16_t **arr, size_t *size, size_t index, const uint16_t code) {
+static void setCode(uint16_t **arr, size_t *size, size_t index, const uint16_t code) {
     if(index >= *size) {
         uint16_t *temp = malloc(sizeof(uint16_t) * 2 * index);
         memcpy(temp, *arr, *size * sizeof(uint16_t));
@@ -31,7 +31,7 @@ void setCode(uint16_t **arr, size_t *size, size_t index, const uint16_t code) {
  * @param index position to add to
  * @param ch element to add
  */
-void setChar(char **arr, size_t *size, size_t index, const char ch) {
+static void setChar(char **arr, size_t *size, size_t index, const char ch) {
     if(index >= *size) {
         char *temp = malloc(sizeof(char) * 2 * index);
         memcpy(temp, *arr, *size * sizeof(char));
@@ -46,8 +46,11 @@ void setChar(char **arr, size_t *size, size_t index, const char ch) {
 uint16_t LZW_CompressOne(const char data, LZW *state) {
     if(state->dict == NULL || state->currSym == NULL) {
         //This is the first byte, its an error to not have both NULL
+        state->dict = malloc(sizeof(Dictionary));
         dict_init(state->dict, state->alphabetSize);
         state->currSym = malloc(sizeof(uint8_t) * state->symLen);
+        //return the clear code, caller must call with the same data again
+        return state->alphabetSize + 1;
     }else if(state->dict->currIndex == MAX_INDEX || state->dict->currIndex == -1) {
         //if we go over the max size of the variable reset the dictionary
         dict_free(state->dict);
@@ -76,6 +79,7 @@ uint16_t LZW_Free(LZW *state) {
 
     dict_free(state->dict);
     free(state->currSym);
+    free(state->dict);
 
     return result;
 }

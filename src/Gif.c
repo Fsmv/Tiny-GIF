@@ -11,7 +11,7 @@ static const char VERSION[3] = {'8', '9', 'a'};
 static const char INTRODUCER = 0x21; //extension introducer
 static const char GCE_LABEL = 0xF9;  //Graphic Control Extension label
 static const char SEPARATOR = 0x2C;  //image block separator
-static const char TRAILER = 0x3B;    //End of block + gif trialer (little endian)
+static const char TRAILER = 0x3B;    //End of block + gif trailer (little endian)
 static const unsigned char BLOCK_SIZE = 0xFE;
 static const char REPEAT_HEADER_SIZE = 16; //omitting the last 3 bytes
 static const char REPEAT_HEADER[19] = {
@@ -71,7 +71,7 @@ struct __attribute__((__packed__)) Gif_priv {
     unsigned short repeatTimes;
 };
 
-void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
+static void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
     //all of our frames fill the screen
     img->x = img->y = 0;
     img->width = gif->width;
@@ -91,30 +91,53 @@ void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
     img->gceTerminator = 0;
 }
 
+static int getBitsInNum(int num) {
+    return floor(log(num)/log(2)) + 1;
+}
+
 /**
  * Takes uncompressed color mappings and compresses it then packs it in the gif
  * data format until it has filled a block or used the last of the data in the
  * frame
  *
+ * Frees lzwState when it runs out of data to compress
+ *
  * @param frame data to compress
  * @param size size of the frame array
- * @param codeSize initial code size to use for compressing
+ * @param lzwState pre-initialized state used for this image
  * @param container the DataBlock to store the compressed data (dynamically
  * allocated)
  * @return the number of elements in the frame array used
  */
-size_t packData(const char *frame, size_t size, const char codeSize, DataBlock *container) {
-    unsigned char *packedData = calloc(compressedSize*2, sizeof(char));
-    static int offset = 0;
-    int compressedIndex = 0;
-    int packedIndex = 0;
+static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock *container) {
+    unsigned char *packedData = calloc(size*2, sizeof(char));
     int bitsWritten = 0;
+    int codeSize = getBitsInNum(lzwState->alphabetSize + 1);
+    size_t packedIndex = 0;
+    size_t frameIndex = 0;
 
-    while(packedIndex < BLOCK_SIZE && compressedIndex < compressedSize) {
-        int bitsInNum = floor(log(compressedData[compressedIndex])/log(2)) + 1;
+    while(packedIndex < BLOCK_SIZE && frameIndex <= size) {
+        uint16_t code;
+        if(frameIndex != size) {
+            code = LZW_CompressOne(frame[frameIndex], lzwState);
+        }else{
+            code = LZW_Free(lzwState);
+        }
+
+        codeSize = getBitsInNum(lzwState->dict->currIndex);
+
+        if(code == lzwState->alphabetSize + 1) {
+            frameIndex--; //do the same code again, we got the clear code
+            codeSize = getBitsInNum(lzwState->alphabetSize + 1);
+        }
+
+        int bitsInNum = getBitsInNum(code);
+        if(bitsInNum < codeSize) {
+            bitsInNum = codeSize;
+        }
 
         if(bitsInNum <= 8 - bitsWritten) {
-            packedData[packedIndex] |= compressedData[compressedIndex] << bitsWritten;
+            packedData[packedIndex] |= code << bitsWritten;
             bitsWritten += bitsInNum;
 
             if(bitsWritten == 8) {
@@ -127,7 +150,7 @@ size_t packData(const char *frame, size_t size, const char codeSize, DataBlock *
                 int bitsToWrite = ((bitsInNum - bitsUsed) <= 8 - bitsWritten) ?
                         (bitsInNum - bitsUsed) : (8 - bitsWritten);
                 int mask = ((1 << bitsToWrite) - 1) << bitsUsed;
-                int num = (compressedData[compressedIndex] & mask) >> bitsUsed;
+                int num = (code & mask) >> bitsUsed;
 
                 packedData[packedIndex] |= num << bitsWritten;
                 bitsWritten += bitsToWrite;
@@ -140,7 +163,7 @@ size_t packData(const char *frame, size_t size, const char codeSize, DataBlock *
             }
         }
 
-        compressedIndex++;
+        frameIndex++;
     }
 
     //if the above for loop limits at BLOCK_SIZE this will always be false
@@ -150,8 +173,8 @@ size_t packData(const char *frame, size_t size, const char codeSize, DataBlock *
 
     container->data = realloc(packedData, packedIndex);
     container->blockSize = packedIndex;
-    offset += compressedIndex;
-    return compressedIndex;
+
+    return frameIndex;
 }
 
 /**
@@ -164,17 +187,19 @@ size_t packData(const char *frame, size_t size, const char codeSize, DataBlock *
  * @param container return value, array to store the blocks in
  * @return number of blocks created
  */
-size_t splitDataBlocks(const char *frame, size_t size, const char codeSize, DataBlock **contianer) {
+static size_t splitDataBlocks(const char *frame, size_t size, const char codeSize, DataBlock **container) {
     //TODO: do size doubling for speed (instead of reallocing by 1 each time)
     //allocate an array of data blocks
     DataBlock *result = *container = malloc(1);
+    LZW lzwState;
+    LZW_Init((1 << codeSize) - 1, &lzwState);
 
     //copy all the blocks that fill the max size
     int frameIndex = 0;
     int blockIndex = 0;
     while(frameIndex < size) {
         result = realloc(result, sizeof(DataBlock) * (blockIndex + 1));
-        int numUsed = packData(frame + frameIndex, size - frameIndex, result + blockIndex);
+        int numUsed = packData(frame + frameIndex, size - frameIndex, &lzwState, result + blockIndex);
 
         frameIndex += numUsed;
         blockIndex++;
@@ -183,7 +208,7 @@ size_t splitDataBlocks(const char *frame, size_t size, const char codeSize, Data
     return blockIndex;
 }
 
-void freeImage(Image *image) {
+static void freeImage(Image *image) {
     int i;
     for(i = 0; i < image->numBlocks; i++) {
         free(image->imageData[i].data);
@@ -204,7 +229,7 @@ Gif *GIF_Init(const unsigned short width, const unsigned short height,
     gif->height = height;
     gif->flags = 0xF0 | (char) floor(log(numColors)/log(2)) - 1;
 
-    gif->backgroundColor = 0;  //bacground color is the first one
+    gif->backgroundColor = 0;  //background color is the first one
     gif->aspectRatio = 0;      //aspect ratio is square
 
     gif->colorTable = colorTable;
@@ -225,10 +250,10 @@ void GIF_AddImage(Gif *gif, const unsigned char *data, const unsigned short dela
     }
 
     imageInit(gif, gif->images + gif->numFrames, delayTime);
-    gif->images[gif->numFrames].imageData = splitDataBlocks(data,
+    gif->images[gif->numFrames].numBlocks = splitDataBlocks(data,
             gif->width*gif->height,
             gif->images[gif->numFrames].LZWMinCodeSize,
-            &(gif->images[gif->numFrames].numBlocks));
+            &(gif->images[gif->numFrames].imageData));
 
     gif->numFrames++;
 }

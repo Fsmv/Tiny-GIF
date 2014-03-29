@@ -60,7 +60,7 @@ extern uint16_t LZW_CompressOne(const char data, LZW *state);
  * symLen = 16;
  * symIndex = 0;
  */
-inline void LZW_Init(uint8_t alphabetSize, LZW *state) {
+inline static void LZW_Init(uint8_t alphabetSize, LZW *state) {
     state->dict = NULL;
     state->currSym = NULL;
     state->alphabetSize = alphabetSize;
