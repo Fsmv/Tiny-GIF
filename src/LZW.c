@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include "Dictionary.h"
 #include "LZW.h"
 
 /**
@@ -44,62 +43,72 @@ void setChar(char **arr, size_t *size, size_t index, const char ch) {
     (*arr)[index] = ch;
 }
 
+uint16_t LZW_CompressOne(const char data, LZW *state) {
+    if(state->dict == NULL || state->currSym == NULL) {
+        //This is the first byte, its an error to not have both NULL
+        dict_init(state->dict, state->alphabetSize);
+        state->currSym = malloc(sizeof(uint8_t) * state->symLen);
+    }else if(state->dict->currIndex == MAX_INDEX || state->dict->currIndex == -1) {
+        //if we go over the max size of the variable reset the dictionary
+        dict_free(state->dict);
+        dict_init(state->dict, state->alphabetSize);
+        //return the clear code, caller must call with the same data again
+        return state->alphabetSize + 1;
+    }
+
+    //append the data to the current symbol
+    setChar((char **) &state->currSym, &state->symLen, state->symIndex, data);
+    state->symIndex++;
+
+    if(!dict_contains(state->dict, state->currSym, state->symIndex)) {
+        //set the current symbol to last char read
+        state->currSym[0] = data;
+        state->symIndex = 1;
+
+        //If the dictionary does not cantain the symbol, add it
+        return dict_add(state->dict, state->currSym, state->symIndex);
+    }
+}
+
+uint16_t LZW_Free(LZW *state) {
+    setChar((char**) &state->currSym, &state->symLen, state->symIndex, '\0');
+    uint16_t result = dict_add(state->dict, state->currSym, state->symIndex + 1);
+
+    dict_free(state->dict);
+    free(state->currSym);
+
+    return result;
+}
+
 void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *codec, uint8_t alphabetSize) {
-    Dictionary dict;
-    dict_init(&dict, alphabetSize);
+    LZW state;
+    LZW_Init(alphabetSize, &state);
 
     size_t resultLen = 64;
     uint16_t *result = malloc(sizeof(uint16_t) * resultLen);
-    size_t resultIndex = 11;
+    size_t resultIndex = 1;
     setCode(&result, &resultLen, resultIndex-1, alphabetSize+1); //first code should be clear
 
-    int maxCodeLen = floor(log(alphabetSize+1)/log(2)) + 1;
-    int i;
-    for(i = 0; i < 10; i++) {
-        result[i] = -1;
-    }
-    result[maxCodeLen] = 0;
-
-    size_t symLen = 16;
-    uint8_t *currSym = malloc(sizeof(uint8_t) * symLen);
-    size_t symIndex = 0;
     size_t charIndex;
     for(charIndex = 0; charIndex < stringc; charIndex++) {
-        setChar((char**)&currSym, &symLen, symIndex, string[charIndex]);
-        symIndex++;
-
-        if(!dict_contains(&dict, currSym, symIndex)) {
-            //If the dictionary does not cantain the symbol, add it
-            setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex));
-            int codeSize = floor(log(dict.currIndex)/log(2)) + 1;
-            if(codeSize > maxCodeLen) {
-                result[codeSize] = resultIndex - 9 + 1;
-                maxCodeLen = codeSize;
-            }
-
-            //if we go over the max size of the variable reset the dictionary
-            if(dict.currIndex == MAX_INDEX || dict.currIndex == -1) {
-                dict_free(&dict);
-                dict_init(&dict, alphabetSize);
-                setCode(&result, &resultLen, resultIndex, dict.clearCode);
-            }
-
-            //set the current symbol to last char read
-            currSym[0] = string[charIndex];
-            symIndex = 1;
+        uint16_t nextCode = LZW_CompressOne(string[charIndex], &state);
+        if(nextCode == alphabetSize + 1) {
+            setCode(&result, &resultLen, resultIndex, nextCode);
             resultIndex++;
+            nextCode = LZW_CompressOne(string[charIndex], &state);
         }
+
+        setCode(&result, &resultLen, resultIndex, nextCode);
+        resultIndex++;
     }
 
-    setChar((char**)&currSym, &symLen, symIndex, '\0');
-    setCode(&result, &resultLen, resultIndex, dict_add(&dict, currSym, symIndex+1));
+
+    uint16_t lastCode = LZW_Free(&state);
+    setCode(&result, &resultLen, resultIndex, lastCode);
     resultIndex++;
 
     *code = result;
     *codec = resultIndex;
-
-    free(currSym);
-    dict_free(&dict);
 }
 
 void LZW_Decompress(const uint16_t *code, const size_t codec, char **string, uint8_t alphabetSize) {
