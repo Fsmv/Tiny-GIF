@@ -167,7 +167,7 @@ size_t packData(const char *frame, size_t size, const char codeSize, DataBlock *
 size_t splitDataBlocks(const char *frame, size_t size, const char codeSize, DataBlock **contianer) {
     //TODO: do size doubling for speed (instead of reallocing by 1 each time)
     //allocate an array of data blocks
-    DataBlock *result = malloc(1);
+    DataBlock *result = *container = malloc(1);
 
     //copy all the blocks that fill the max size
     int frameIndex = 0;
@@ -180,7 +180,7 @@ size_t splitDataBlocks(const char *frame, size_t size, const char codeSize, Data
         blockIndex++;
     }
 
-    return result;
+    return blockIndex;
 }
 
 void freeImage(Image *image) {
