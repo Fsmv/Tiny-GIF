@@ -91,39 +91,27 @@ void imageInit(const Gif *gif, Image *img, const unsigned short delayTime) {
     img->gceTerminator = 0;
 }
 
-size_t packData(const uint16_t *compressedData, size_t compressedSize, const uint16_t *codeSizes, DataBlock *container) {
+/**
+ * Takes uncompressed color mappings and compresses it then packs it in the gif
+ * data format until it has filled a block or used the last of the data in the
+ * frame
+ *
+ * @param frame data to compress
+ * @param size size of the frame array
+ * @param codeSize initial code size to use for compressing
+ * @param container the DataBlock to store the compressed data (dynamically
+ * allocated)
+ * @return the number of elements in the frame array used
+ */
+size_t packData(const char *frame, size_t size, const char codeSize, DataBlock *container) {
     unsigned char *packedData = calloc(compressedSize*2, sizeof(char));
     static int offset = 0;
     int compressedIndex = 0;
     int packedIndex = 0;
     int bitsWritten = 0;
-    int codeSize;
-    for(codeSize = 0; codeSize < 10; codeSize++) {
-        if(codeSizes[codeSize] == offset || codeSize == 9) {
-            break;
-        }else if(codeSizes[codeSize] != 0xFFFF && codeSizes[codeSize] > offset) {
-            codeSize--;
-            break;
-        }
-    }
-
-    int i;
-    for(i = 0; i < 10; i++) {
-        printf("%d\n", codeSizes[i]);
-    }
-
-    printf("%d: %d, %d\n\n", codeSizes[codeSize], codeSize, offset);
 
     while(packedIndex < BLOCK_SIZE && compressedIndex < compressedSize) {
         int bitsInNum = floor(log(compressedData[compressedIndex])/log(2)) + 1;
-
-        if(compressedIndex + offset == codeSizes[codeSize+1]) {
-            codeSize++;
-        }
-
-        if(bitsInNum < codeSize) {
-            bitsInNum = codeSize;
-        }
 
         if(bitsInNum <= 8 - bitsWritten) {
             packedData[packedIndex] |= compressedData[compressedIndex] << bitsWritten;
@@ -166,46 +154,32 @@ size_t packData(const uint16_t *compressedData, size_t compressedSize, const uin
     return compressedIndex;
 }
 
-DataBlock *splitDataBlocks(const char *frame, size_t size, const char codeSize,  size_t *numBlocks) {
-    uint16_t *compressedData;
-    size_t compressedSize;
-    LZW_Compress(frame, size, &compressedData, &compressedSize, (1 << codeSize) - 1);
-    uint16_t *fullData = compressedData; //save to free later
-    compressedData += 10; //skip past the code sizes
-    compressedSize -= 10;
-
-    *numBlocks = compressedSize/BLOCK_SIZE + 1;
-
+/**
+ * Takes a frame and converts it to an array of compressed and packed data
+ * blocks in the gif format.
+ *
+ * @param frame frame to encode
+ * @param size size of the frame
+ * @param codeSize initial code size to use for compressing
+ * @param container return value, array to store the blocks in
+ * @return number of blocks created
+ */
+size_t splitDataBlocks(const char *frame, size_t size, const char codeSize, DataBlock **contianer) {
+    //TODO: do size doubling for speed (instead of reallocing by 1 each time)
     //allocate an array of data blocks
     DataBlock *result = malloc(1);
 
-
     //copy all the blocks that fill the max size
+    int frameIndex = 0;
     int blockIndex = 0;
-    while(compressedSize != 0) {
-        if(compressedSize <= BLOCK_SIZE) {
-            uint16_t *temp = compressedData;
-            compressedData = malloc((compressedSize + 1) * sizeof(uint16_t));
-            memcpy(compressedData, temp, compressedSize * sizeof(uint16_t));
-
-            compressedData[compressedSize] = (1 << codeSize) + 1;
-            compressedSize++;
-        }
-
+    while(frameIndex < size) {
         result = realloc(result, sizeof(DataBlock) * (blockIndex + 1));
-        //fullData works for codeSizes because the codeSizes are at the beginning of the full data
-        int shortsUsed = packData(compressedData, compressedSize, fullData, result + blockIndex);
+        int numUsed = packData(frame + frameIndex, size - frameIndex, result + blockIndex);
 
-        if(compressedSize - 1 <= BLOCK_SIZE) {
-            free(compressedData);
-        }
-
-        compressedData += shortsUsed;
-        compressedSize -= shortsUsed;
+        frameIndex += numUsed;
         blockIndex++;
     }
 
-    free(fullData);
     return result;
 }
 
