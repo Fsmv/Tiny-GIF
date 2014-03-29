@@ -64,12 +64,16 @@ uint16_t LZW_CompressOne(const char data, LZW *state) {
     state->symIndex++;
 
     if(!dict_contains(state->dict, state->currSym, state->symIndex)) {
+        //If the dictionary does not cantain the symbol, add it
+        uint16_t result = dict_add(state->dict, state->currSym, state->symIndex);
+
         //set the current symbol to last char read
         state->currSym[0] = data;
         state->symIndex = 1;
 
-        //If the dictionary does not cantain the symbol, add it
-        return dict_add(state->dict, state->currSym, state->symIndex);
+        return result;
+    }else{
+        return 0xFFFF;
     }
 }
 
@@ -90,8 +94,7 @@ void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *c
 
     size_t resultLen = 64;
     uint16_t *result = malloc(sizeof(uint16_t) * resultLen);
-    size_t resultIndex = 1;
-    setCode(&result, &resultLen, resultIndex-1, alphabetSize+1); //first code should be clear
+    size_t resultIndex = 0;
 
     size_t charIndex;
     for(charIndex = 0; charIndex < stringc; charIndex++) {
@@ -102,10 +105,11 @@ void LZW_Compress(const char *string, size_t stringc, uint16_t **code, size_t *c
             nextCode = LZW_CompressOne(string[charIndex], &state);
         }
 
-        setCode(&result, &resultLen, resultIndex, nextCode);
-        resultIndex++;
+        if(nextCode != 0xffff) {
+            setCode(&result, &resultLen, resultIndex, nextCode);
+            resultIndex++;
+        }
     }
-
 
     uint16_t lastCode = LZW_Free(&state);
     setCode(&result, &resultLen, resultIndex, lastCode);
