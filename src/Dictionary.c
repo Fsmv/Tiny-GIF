@@ -86,16 +86,22 @@ int tree_contains(const Node *head, const uint8_t *value, const size_t valuec) {
         return 0;
     }
 
-    int i;
-    for(i = 0; i < head->numChildren; i++) {
-        if(head->children[i].val == value[0]) {
+    size_t start = 0;
+    size_t mid = head->numChildren / 2;
+    size_t end = head->numChildren;
+    while(start == mid || end == mid) {
+        if(head->children[mid].val < value[0]) {
+            start = mid;
+            mid += (end - mid) / 2;
+        }else if(head->children[mid].val > value[0]) {
+            end = mid;
+            mid /= 2;
+        }else {
             if(valuec == 1) {
                 return 1;
             }else{
-                return tree_contains(&head->children[i], value + 1, valuec - 1);
+                return tree_contains(&head->children[mid], value + 1, valuec - 1);
             }
-        }else if(head->children[i].val > value[0]) {
-            return 0;
         }
     }
 
