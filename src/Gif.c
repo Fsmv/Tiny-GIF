@@ -110,7 +110,7 @@ static int getBitsInNum(int num) {
  * @return the number of elements in the frame array used
  */
 static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock *container) {
-    unsigned char *packedData = calloc(size*2, sizeof(char));
+    unsigned char *packedData = calloc(BLOCK_SIZE, sizeof(char));
     int bitsWritten = 0;
     int codeSize = getBitsInNum(lzwState->alphabetSize + 1);
     size_t packedIndex = 0;
@@ -120,11 +120,10 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
         uint16_t code;
         if(frameIndex != size) {
             code = LZW_CompressOne(frame[frameIndex], lzwState);
+            codeSize = getBitsInNum(lzwState->dict->currIndex);
         }else{
             code = LZW_Free(lzwState);
         }
-
-        codeSize = getBitsInNum(lzwState->dict->currIndex);
 
         if(code == lzwState->alphabetSize + 1) {
             frameIndex--; //do the same code again, we got the clear code
@@ -166,6 +165,10 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
         frameIndex++;
     }
 
+    if(packedIndex >= BLOCK_SIZE && frameIndex > size) {
+        LZW_Free(lzwState);
+    }
+
     //if the above for loop limits at BLOCK_SIZE this will always be false
     if(bitsWritten != 0) {
         packedIndex++;
@@ -190,7 +193,7 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
 static size_t splitDataBlocks(const char *frame, size_t size, const char codeSize, DataBlock **container) {
     //TODO: do size doubling for speed (instead of reallocing by 1 each time)
     //allocate an array of data blocks
-    DataBlock *result = *container = malloc(1);
+    DataBlock *result = malloc(1);
     LZW lzwState;
     LZW_Init((1 << codeSize) - 1, &lzwState);
 
@@ -205,6 +208,7 @@ static size_t splitDataBlocks(const char *frame, size_t size, const char codeSiz
         blockIndex++;
     }
 
+    *container = result;
     return blockIndex;
 }
 
