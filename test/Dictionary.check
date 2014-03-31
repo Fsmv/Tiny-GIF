@@ -13,10 +13,10 @@
     dict_add(&dict, val + 2, 2);
     dict_add(&dict, val + 2, 3);
 
-    fail_unless(dict_contains(&dict, val, 2) == 1, "Add or contians failed");
-    fail_unless(dict_contains(&dict, val, 3) == 1, "Add or contians failed");
-    fail_unless(dict_contains(&dict, val, 4) == 1, "Add or contians failed");
-    fail_unless(dict_contains(&dict, val, 5) == 1, "Add or contians failed");
+    fail_unless(dict_contains(&dict, val, 2) == 1, "Add or contains failed");
+    fail_unless(dict_contains(&dict, val, 3) == 1, "Add or contains failed");
+    fail_unless(dict_contains(&dict, val, 4) == 1, "Add or contains failed");
+    fail_unless(dict_contains(&dict, val, 5) == 1, "Add or contains failed");
 
-    fail_unless(dict_contains(&dict, val + 2, 2) == 1, "Add or contians failed");
-    fail_unless(dict_contains(&dict, val + 2, 3) == 1, "Add or contians failed");
+    fail_unless(dict_contains(&dict, val + 2, 2) == 1, "Add or contains failed");
+    fail_unless(dict_contains(&dict, val + 2, 3) == 1, "Add or contains failed");
