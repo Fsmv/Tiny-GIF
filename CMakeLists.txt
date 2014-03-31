@@ -18,11 +18,15 @@ include_directories (
     ${CMAKE_SOURCE_DIR}/include
 )
 
+add_library(nomain STATIC ${SOURCES})
+
 add_executable (
     lzw
     MACOSX_BUNDLE
-    ${MAIN} ${SOURCES}
+    ${MAIN}
 )
+
+target_link_libraries(lzw nomain)
 
 ######### Build Tests
 set(TESTSRC
@@ -30,7 +34,6 @@ set(TESTSRC
     test/LZW.check
 )
 
-add_library(testlib STATIC ${SOURCES})
 
 foreach(_file ${TESTSRC})
     string(REPLACE ".check" ".c" _genfile ${_file})
@@ -48,6 +51,6 @@ foreach(_file ${TESTSRC})
         DEPENDS ${_file} ${_dir}
     )
     add_executable(${_binary} ${_genfile} ${SOURCES})
-    target_link_libraries(${_binary} ${CHECK_LIBRARIES} testlib)
+    target_link_libraries(${_binary} ${CHECK_LIBRARIES} nomain)
     add_test(${_binary} ${_binary})
 endforeach()
