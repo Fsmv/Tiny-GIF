@@ -7,9 +7,9 @@
     uint16_t *code;
     size_t codec;
     const char *orig = "Hello World!";
-    LZW_Compress(orig, &code, &codec);
+    LZW_Compress(orig, strlen(orig), &code, &codec, 0xff);
 
     char *decomp;
-    LZW_Decompress(code, codec, &decomp);
+    LZW_Decompress(code, codec, &decomp, 0xff);
 
     fail_unless(strcmp(decomp, orig) == 0, "Decompressed not equal to the original");

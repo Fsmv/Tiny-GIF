@@ -2,7 +2,7 @@
 
 #test DictionaryCheck
     Dictionary dict;
-    dict_init(&dict);
+    dict_init(&dict, 0xff);
 
     unsigned char val[5] = {'a', 'a', 'b', 'c', 'a'};
     dict_add(&dict, val, 2);
