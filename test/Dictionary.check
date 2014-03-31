@@ -1,0 +1,22 @@
+#include "Dictionary.h"
+
+#test DictionaryCheck
+    Dictionary dict;
+    dict_init(&dict);
+
+    unsigned char val[5] = {'a', 'a', 'b', 'c', 'a'};
+    dict_add(&dict, val, 2);
+    dict_add(&dict, val, 3);
+    dict_add(&dict, val, 4);
+    dict_add(&dict, val, 5);
+
+    dict_add(&dict, val + 2, 2);
+    dict_add(&dict, val + 2, 3);
+
+    fail_unless(dict_contains(&dict, val, 2) == 1, "Add or contians failed");
+    fail_unless(dict_contains(&dict, val, 3) == 1, "Add or contians failed");
+    fail_unless(dict_contains(&dict, val, 4) == 1, "Add or contians failed");
+    fail_unless(dict_contains(&dict, val, 5) == 1, "Add or contians failed");
+
+    fail_unless(dict_contains(&dict, val + 2, 2) == 1, "Add or contians failed");
+    fail_unless(dict_contains(&dict, val + 2, 3) == 1, "Add or contians failed");
