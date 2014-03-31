@@ -27,27 +27,27 @@ add_executable (
 ######### Build Tests
 set(TESTSRC
     test/Dictionary.check
+    test/LZW.check
 )
 
-set(GENSRC)
+add_library(testlib STATIC ${SOURCES})
+
 foreach(_file ${TESTSRC})
-    string(REPLACE ".check" ".c" genfile ${_file})
-    string(REGEX REPLACE "(^.*)/([^/]*)\$" "${CMAKE_BINARY_DIR}/\\1" FOLDER ${_file})
+    string(REPLACE ".check" ".c" _genfile ${_file})
+    string(REPLACE ".check" "" _binary ${_file})
+    string(REGEX REPLACE "(^.*)/([^/]*)\$" "${CMAKE_BINARY_DIR}/\\1" _dir ${_file})
     add_custom_command(
-        OUTPUT ${FOLDER}
+        OUTPUT ${_dir}
         COMMAND mkdir
-        ARGS -p ${FOLDER}
+        ARGS -p ${_dir}
     )
     add_custom_command(
-        OUTPUT ${genfile}
+        OUTPUT ${_genfile}
         COMMAND checkmk
-        ARGS ${CMAKE_SOURCE_DIR}/${_file} > ${CMAKE_BINARY_DIR}/${genfile}
-        DEPENDS ${_file} ${FOLDER}
+        ARGS ${CMAKE_SOURCE_DIR}/${_file} > ${CMAKE_BINARY_DIR}/${_genfile}
+        DEPENDS ${_file} ${_dir}
     )
-    list(APPEND GENSRC ${genfile})
+    add_executable(${_binary} ${_genfile} ${SOURCES})
+    target_link_libraries(${_binary} ${CHECK_LIBRARIES} testlib)
+    add_test(${_binary} ${_binary})
 endforeach()
-
-add_executable(runtests ${GENSRC} ${SOURCES})
-target_link_libraries(runtests ${CHECK_LIBRARIES})
-
-add_test(tests runtests)

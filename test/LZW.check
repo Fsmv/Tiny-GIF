@@ -1,0 +1,15 @@
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
+#include "LZW.h"
+
+#test LZWAllAtOnce
+    uint16_t *code;
+    size_t codec;
+    const char *orig = "Hello World!";
+    LZW_Compress(orig, &code, &codec);
+
+    char *decomp;
+    LZW_Decompress(code, codec, &decomp);
+
+    fail_unless(strcmp(decomp, orig) == 0, "Decompressed not equal to the original");
