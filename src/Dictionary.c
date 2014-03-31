@@ -87,15 +87,13 @@ int tree_contains(const Node *head, const uint8_t *value, const size_t valuec) {
     }
 
     size_t start = 0;
-    size_t mid = head->numChildren / 2;
     size_t end = head->numChildren;
-    while(start == mid || end == mid) {
+    while(start <= end) {
+        int mid = (start + end) / 2;
         if(head->children[mid].val < value[0]) {
-            start = mid;
-            mid += (end - mid) / 2;
+            start = mid + 1;
         }else if(head->children[mid].val > value[0]) {
-            end = mid;
-            mid /= 2;
+            end = mid - 1;
         }else {
             if(valuec == 1) {
                 return 1;
