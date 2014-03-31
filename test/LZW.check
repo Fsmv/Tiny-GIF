@@ -12,4 +12,4 @@
     char *decomp;
     LZW_Decompress(code, codec, &decomp, 0xff);
 
-    fail_unless(strcmp(decomp, orig) == 0, "Decompressed not equal to the original");
+    ck_assert_msg(strcmp(decomp, orig) == 0, "Decompressed not equal to the original");
