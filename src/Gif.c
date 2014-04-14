@@ -120,7 +120,13 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
         uint16_t code;
         if(frameIndex != size) {
             code = LZW_CompressOne(frame[frameIndex], lzwState);
-            codeSize = getBitsInNum(lzwState->dict->currIndex);
+
+            if(code == 0xFFFF) { //no code output
+                frameIndex++;
+                continue;
+            }
+
+            //codeSize = getBitsInNum(lzwState->dict->currIndex);
         }else{
             code = LZW_Free(lzwState);
         }
@@ -133,6 +139,8 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
         int bitsInNum = getBitsInNum(code);
         if(bitsInNum < codeSize) {
             bitsInNum = codeSize;
+        }else{
+            codeSize = bitsInNum;
         }
 
         if(bitsInNum <= 8 - bitsWritten) {
