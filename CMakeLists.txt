@@ -13,6 +13,12 @@ set(SOURCES
     src/Gif.c
 )
 
+set(TESTSRC
+    test/Dictionary.check
+    test/LZW.check
+    test/Gif.check
+)
+
 include_directories (
     ${CMAKE_SOURCE_DIR}/include
 )
@@ -49,11 +55,6 @@ install(FILES ${CMAKE_SOURCE_DIR}/include/Gif.h DESTINATION include)
 enable_testing()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 find_package(Check REQUIRED)
-
-set(TESTSRC
-    test/Dictionary.check
-    test/LZW.check
-)
 
 foreach(_file ${TESTSRC})
     string(REPLACE ".check" ".c" _genfile ${_file})

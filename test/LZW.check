@@ -3,6 +3,8 @@
 #include <string.h>
 #include "LZW.h"
 
+#include <stdio.h>
+
 #test LZWAllAtOnce
     uint16_t *code;
     size_t codec;
@@ -11,5 +13,7 @@
 
     char *decomp;
     LZW_Decompress(code, codec, &decomp, 0xff);
+
+    printf("%s\n", decomp);
 
     ck_assert_msg(strcmp(decomp, orig) == 0, "Decompressed not equal to the original");
