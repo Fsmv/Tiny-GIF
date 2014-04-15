@@ -14,6 +14,7 @@ typedef struct {
     size_t symLen;
     size_t symIndex;
     uint8_t alphabetSize;
+    uint8_t codeSize;
 } LZW;
 
 /**

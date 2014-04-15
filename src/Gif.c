@@ -110,37 +110,46 @@ static int getBitsInNum(int num) {
  * @return the number of elements in the frame array used
  */
 static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock *container) {
-    unsigned char *packedData = calloc(BLOCK_SIZE, sizeof(char));
+    static char overflow = 0;
+    static char overflowSize = 0;
+    unsigned char *packedData = calloc(BLOCK_SIZE + 1, sizeof(char));
     int bitsWritten = 0;
-    int codeSize = getBitsInNum(lzwState->alphabetSize + 1);
+    if(lzwState->dict == NULL) {
+        lzwState->codeSize = getBitsInNum(lzwState->alphabetSize + 1);
+    }
     size_t packedIndex = 0;
     size_t frameIndex = 0;
 
     while(packedIndex < BLOCK_SIZE && frameIndex <= size) {
         uint16_t code;
-        if(frameIndex != size) {
+        if(overflowSize != 0) {
+            code = overflow;
+            overflow = 0;
+            frameIndex--;
+        }else if(frameIndex < size) {
             code = LZW_CompressOne(frame[frameIndex], lzwState);
-
-            if(code == 0xFFFF) { //no code output
-                frameIndex++;
-                continue;
-            }
-
-            //codeSize = getBitsInNum(lzwState->dict->currIndex);
         }else{
             code = LZW_Free(lzwState);
         }
 
+        if(code == 0xFFFF) { //no code output
+            frameIndex++;
+            continue;
+        }
+
         if(code == lzwState->alphabetSize + 1) {
             frameIndex--; //do the same code again, we got the clear code
-            codeSize = getBitsInNum(lzwState->alphabetSize + 1);
+            lzwState->codeSize = getBitsInNum(lzwState->alphabetSize + 1);
         }
 
         int bitsInNum = getBitsInNum(code);
-        if(bitsInNum < codeSize) {
-            bitsInNum = codeSize;
+        if(overflowSize != 0) {
+            bitsInNum = overflowSize;
+            overflowSize = 0;
+        }else if(bitsInNum < lzwState->codeSize) {
+            bitsInNum = lzwState->codeSize;
         }else{
-            codeSize = bitsInNum;
+            lzwState->codeSize = bitsInNum;
         }
 
         if(bitsInNum <= 8 - bitsWritten) {
@@ -166,15 +175,17 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
                 if(bitsWritten == 8) {
                     bitsWritten = 0;
                     packedIndex++;
+
+                    if(packedIndex == BLOCK_SIZE) {
+                        overflow = code >> bitsUsed;
+                        overflowSize = bitsInNum - bitsUsed;
+                        break;
+                    }
                 }
             }
         }
 
         frameIndex++;
-    }
-
-    if(packedIndex >= BLOCK_SIZE && frameIndex > size) {
-        LZW_Free(lzwState);
     }
 
     //if the above for loop limits at BLOCK_SIZE this will always be false
@@ -208,7 +219,7 @@ static size_t splitDataBlocks(const char *frame, size_t size, const char codeSiz
     //copy all the blocks that fill the max size
     int frameIndex = 0;
     int blockIndex = 0;
-    while(frameIndex < size) {
+    while(frameIndex <= size) {
         result = realloc(result, sizeof(DataBlock) * (blockIndex + 1));
         int numUsed = packData(frame + frameIndex, size - frameIndex, &lzwState, result + blockIndex);
 
