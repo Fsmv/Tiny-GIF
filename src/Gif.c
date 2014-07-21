@@ -12,7 +12,7 @@ static const char INTRODUCER = 0x21; //extension introducer
 static const char GCE_LABEL = 0xF9;  //Graphic Control Extension label
 static const char SEPARATOR = 0x2C;  //image block separator
 static const char TRAILER = 0x3B;    //End of block + gif trailer (little endian)
-static const unsigned char BLOCK_SIZE = 0xFE;
+static const unsigned char BLOCK_SIZE = 0xFD;
 static const char REPEAT_HEADER_SIZE = 16; //omitting the last 3 bytes
 static const char REPEAT_HEADER[19] = {
     0x21, 0xFF, //application block flags
@@ -119,8 +119,10 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
     }
     size_t packedIndex = 0;
     size_t frameIndex = 0;
+    int writeSTOP = 0;
 
-    while(packedIndex < BLOCK_SIZE && frameIndex <= size) {
+    //printf("\n");
+    while((packedIndex < BLOCK_SIZE && frameIndex <= size) || writeSTOP) {
         uint16_t code;
         if(overflowSize != 0) {
             code = overflow;
@@ -128,8 +130,12 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
             frameIndex--;
         }else if(frameIndex < size) {
             code = LZW_CompressOne(frame[frameIndex], lzwState);
+        }else if(!writeSTOP){
+            code = LZW_Free(lzwState); //write the last code
+            writeSTOP = 1;
         }else{
-            code = LZW_Free(lzwState);
+            code = lzwState->alphabetSize + 2; //write the stop code
+            writeSTOP = 0;
         }
 
         if(code == 0xFFFF) { //no code output
@@ -146,11 +152,16 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
         if(overflowSize != 0) {
             bitsInNum = overflowSize;
             overflowSize = 0;
-        }else if(bitsInNum < lzwState->codeSize) {
+        }
+
+        if(bitsInNum < lzwState->codeSize) {
             bitsInNum = lzwState->codeSize;
         }else{
             lzwState->codeSize = bitsInNum;
+            //printf("top: %d, %d\n", frameIndex, lzwState->codeSize);
         }
+
+        //printf("code: %x, size: %d\n", code, lzwState->codeSize);
 
         if(bitsInNum <= 8 - bitsWritten) {
             packedData[packedIndex] |= code << bitsWritten;
@@ -186,6 +197,10 @@ static size_t packData(const char *frame, size_t size, LZW *lzwState, DataBlock 
         }
 
         frameIndex++;
+        if(code != 0xffff) {
+            lzwState->codeSize = getBitsInNum(lzwState->dict->currIndex - 1);
+            //printf("bottom: %d, %d\n", lzwState->dict->currIndex, lzwState->codeSize);
+        }
     }
 
     //if the above for loop limits at BLOCK_SIZE this will always be false
